@@ -1,13 +1,17 @@
 {
   "name": "hesap-kitap",
-  "version": "3.2.0",
+  "version": "3.4.0",
   "private": true,
   "description": "Hesap Kitap: aylık gelir ve gider takibi",
   "scripts": {
     "build:web": "node scripts/build-web.mjs",
     "sync": "npm run build:web && cap sync",
     "android": "npm run sync && cap open android",
-    "ios": "npm run sync && cap open ios"
+    "ios": "npm run sync && cap open ios",
+    "test": "node tests/e2e/run-all.js",
+    "serve": "python3 -m http.server 8000",
+    "icons": "node scripts/make-icons.js",
+    "store-shots": "node scripts/store-screenshots.js"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
@@ -15,6 +19,7 @@
     "@capacitor/ios": "8.5.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.2"
+    "@capacitor/cli": "8.5.2",
+    "playwright": "1.56.1"
   }
 }

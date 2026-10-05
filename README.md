@@ -46,6 +46,10 @@ Ana ekrandan açılınca tam ekran uygulama gibi çalışır, internet olmadan d
 
 > Veriler yalnızca o cihazda tutulur. Tarayıcı verilerini silersen kayıtlar da gider; **Ayarlar → Yedek dosyası indir** ile ayda bir yedek al.
 
+## Bilgisayarda geliştirmek
+
+Kurulum ve Claude Code ile devam etme rehberi: [YEREL-KURULUM.md](YEREL-KURULUM.md). Proje hafızası ve yapılacaklar: [CLAUDE.md](CLAUDE.md). Testler: `npm test` ([tests/e2e](tests/e2e/README.md)).
+
 ## App Store ve Google Play
 
 Uygulama Capacitor ile iOS ve Android uygulaması olarak paketlenir (`ios/`, `android/`). Her gönderimde GitHub Actions test APK'sı üretir ve iOS derlemesini kontrol eder. Mağazaya yükleme adımları: [MAGAZA.md](MAGAZA.md). Gizlilik politikası: [privacy.html](privacy.html).

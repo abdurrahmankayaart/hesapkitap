@@ -1577,7 +1577,7 @@ function renderSettings(el) {
   <section class="card"><div class="sec-h"><h2>Sıfırla</h2></div><div class="row">
     ${S.sample ? '<button class="btn sm" data-act="clearSample">Örnek verileri sil</button>' : '<button class="btn sm" data-act="loadSample">Örnek verileri yükle</button>'}
     <button class="btn sm danger" data-act="wipe">Tüm verileri sil</button><button class="btn sm" data-act="tour">Tanıtım turunu göster</button></div>
-    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.3</p></section>`;
+    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.4</p></section>`;
   $('#impFile', el).addEventListener('change', e => readFile(e.target.files[0], doImport));
   $('#restoreFile', el).addEventListener('change', e => readFile(e.target.files[0], restore));
 }

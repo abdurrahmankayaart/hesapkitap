@@ -1,5 +1,5 @@
 // Hesap Kitap service worker: works offline, fetches fresh copy when online.
-const CACHE = 'kese-v14';
+const CACHE = 'kese-v15';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -1,0 +1,23 @@
+const { chromium } = require('playwright');
+const path = require('path'), fs = require('fs'), { pathToFileURL } = require('url');
+const ROOT = path.resolve(__dirname, '../..');
+const OUT = path.join(__dirname, 'out'); fs.mkdirSync(OUT, {recursive: true}); process.chdir(OUT);
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({viewport:{width:390,height:844}, deviceScaleFactor:2, colorScheme:'dark'});
+  await ctx.addInitScript(() => { localStorage.setItem('kese.tour','1'); localStorage.setItem('kese.perms','1'); localStorage.setItem('kese.hero','klasik'); });
+  const pg = await ctx.newPage(); const errs=[]; pg.on('pageerror',e=>errs.push(e.message));
+  await pg.goto(pathToFileURL(path.join(ROOT, 'index.html')).href + '#ozet'); await pg.waitForTimeout(400);
+  await pg.fill('#wn','Abdurrahman'); await pg.click('#wName .save'); await pg.waitForTimeout(500); await pg.click('[data-wstart="blank"]'); await pg.waitForTimeout(800);
+  const add = async t => { await pg.fill('#qtext', t); await pg.press('#qtext','Enter'); await pg.waitForTimeout(400); };
+  await add('market 1200'); await add('kira 50000');
+  const hero = async n => { const t = (await pg.textContent('.hero')).replace(/\s+/g,' '); await pg.locator('.hero').screenshot({path:`hero-${n}.png`}); return t; };
+  console.log('A', await hero('a'));
+  await pg.click('[data-act="addIncome"]'); await pg.waitForTimeout(400);
+  console.log('sheet type', await pg.evaluate(()=>[...document.querySelectorAll('#sheet [aria-pressed="true"]')].map(e=>e.textContent.trim()).slice(0,3)));
+  await pg.keyboard.press('Escape'); await pg.evaluate(()=>{const x=document.querySelector('#sheet .x'); if(x) x.click();}); await pg.waitForTimeout(300);
+  await add('maaş 30000'); console.log('C', await hero('c'));
+  await add('maaş 40000'); console.log('B', await hero('b'));
+  console.log('neg text present', (await pg.textContent('.hero')).includes('−'), errs);
+  await b.close();
+})();
