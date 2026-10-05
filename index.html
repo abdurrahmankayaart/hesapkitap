@@ -1018,7 +1018,8 @@ function parseQuick(text) {
   if ((m = s.match(/\s(\d{1,2})\s*(taksit|taksitle|ay taksit)\s/))) { r.inst = Math.min(36, Math.max(1, +m[1])); cut(m[0]); }
   if ((m = s.match(/\s(nakit|elden)\s/))) { r.method = 'nakit'; cut(m[0]); }
   if ((m = s.match(/\s(kredi kartıyla|kredi kartı|kartla|kart)\s/))) { r.method = 'kart'; cut(m[0]); }
-  if ((m = s.match(/\s(evvelsi gün|önceki gün)\s/))) { setD(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2), 'Önceki gün'); cut(m[0]); }
+  if ((m = s.match(/\s(\d{1,2})\s(gün|gun)\s(önce|once)\s/)) && +m[1] >= 1) { setD(new Date(now.getFullYear(), now.getMonth(), now.getDate() - +m[1]), `${+m[1]} gün önce`); cut(m[0]); }
+  else if ((m = s.match(/\s(evvelsi gün|önceki gün)\s/))) { setD(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2), 'Önceki gün'); cut(m[0]); }
   else if ((m = s.match(/\s(dün|dun)\s/))) { setD(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1), 'Dün'); cut(m[0]); }
   else if ((m = s.match(/\s(bugün|bugun)\s/))) cut(m[0]);
   else if ((m = s.match(/\s(\d{1,2})[.\/](\d{1,2})(?:[.\/](\d{2,4}))?\s/)) && +m[2] >= 1 && +m[2] <= 12 && +m[1] >= 1 && +m[1] <= 31) {
@@ -1182,7 +1183,7 @@ function calHtml() {
   h += `</div>${topD ? `<p class="hint" style="margin-top:10px">En çok harcadığın gün <b style="color:var(--ink)">${parseD(topD).getDate()} ${AY[m]} ${GUN[parseD(topD).getDay()]}</b>: ${money(per[topD])}</p>` : ''}</div>`;
   if (calSel) {
     const dt = parseD(calSel), list = monthTx(y, m).filter(t => t.date === calSel && (calAll || (!t.fixedId && !t.inst))).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    h += `<div><div class="day-h"><span>${dt.getDate()} ${AY[dt.getMonth()]} · ${GUN[dt.getDay()]}</span><span class="num">${sum(list, 'gider') ? '−' + money(sum(list, 'gider')) : ''}</span></div>${list.length ? `<div class="txg">${list.map(txRow).join('')}</div>` : `<div class="card empty">Bu gün kayıt yok.</div>`}</div>`;
+    h += `<div><div class="day-h"><span>${dt.getDate()} ${AY[dt.getMonth()]} · ${GUN[dt.getDay()]}</span><span class="num">${sum(list, 'gider') ? '−' + money(sum(list, 'gider')) : ''}</span></div>${list.length ? `<div class="txg">${list.map(txRow).join('')}</div>` : `<div class="card empty">Bu gün kayıt yok.</div>`}${calSel <= dstr(now0) ? `<button class="btn sm" data-calnew="${calSel}" style="margin-top:10px">+ ${dt.getDate()} ${AY[dt.getMonth()]} için harcama ekle</button>` : ''}</div>`;
   }
   return h;
 }
@@ -2078,6 +2079,7 @@ document.addEventListener('click', e => {
       const k = keyFor(pp); try { [k, k + '.pin', k + '.ui'].forEach(x => localStorage.removeItem(x)); } catch (e) {} PEOPLE.list = PEOPLE.list.filter(x => x !== pp); savePeople(); render(); toast(`${pp.name} silindi`); }); }
   else if ((b = t.closest('[data-ltab]'))) { listTab = b.dataset.ltab; render(true); }
   else if ((b = t.closest('[data-calday]'))) { calSel = b.dataset.calday; buzz(5); render(); }
+  else if ((b = t.closest('[data-calnew]'))) openSheet({type: 'gider', date: b.dataset.calnew});
   else if ((b = t.closest('[data-calall]'))) { calAll = b.dataset.calall === '1'; render(); }
   else if ((b = t.closest('[data-fall]'))) { listFilter.all = !listFilter.all; render(); }
   else if ((b = t.closest('[data-themeset]'))) { theme = b.dataset.themeset; saveUi(); if (theme === 'system') document.documentElement.removeAttribute('data-theme'); applyTheme(); render(); }
