@@ -50,18 +50,34 @@ Sonra her zamanki gibi Türkçe iste: "Takvime haftalık görünüm ekle", "Ayar
 - Görsel değişikliklerde: "Önce ekran görüntüsüyle önizleme göster" de.
 - Claude'un her komutta izin sormasını azaltmak için: Claude Code'da `/permissions` ya da ilk açılışta "bu klasörde düzenlemelere izin ver" seçeneği.
 
-## 5. Yayın nasıl çalışıyor
-- Kod GitHub'da `claude/monthly-expense-tracker-3cktrg` dalında (deponun varsayılan dalı). Bu dala her gönderimde GitHub Pages siteyi yeniler.
-- Aynı anda GitHub Actions Android test APK'sını ve iOS derlemesini yapar: GitHub → depo → **Actions**.
-- Dal adını değiştirmek istersen (ör. `main`): GitHub → Settings → Pages'ten yayın dalını da değiştirmen gerekir; Claude'a "yayını main dalına taşıyalım" demen yeterli.
+## 5. Kendi siteme yayın: abdurrahmankaya.com/takip
+Hedef: bilgisayarda Claude'a bir değişiklik yaptırdığında, birkaç saniye içinde **https://abdurrahmankaya.com/takip/** adresinde yayına girmesi. Siten Hostinger VPS'inde (`187.127.77.126`, `srv1638664.hstgr.cloud`) **Coolify** ile çalışıyor; Hesap Kitap da oraya, ayrı bir uygulama olarak `/takip` yoluna kurulacak. Ana siten etkilenmez.
 
-## 6. Bilmen gerekenler
+**Yeni Claude Code sohbetinden önce hazırla:**
+1. **Coolify panel adresi** (tarayıcıda Coolify'ı açtığın adres; ör. `http://187.127.77.126:8000`).
+2. **Coolify API token'ı:** Coolify → sol menü **Keys & Tokens** → **API tokens** → "Create" → tüm yetkileri (read, write, deploy) seç → çıkan kodu kopyala. Bu kod sitenin anahtarı gibidir: sadece kendi bilgisayarındaki Claude Code'a ver, başka yere yapıştırma.
+3. Coolify'da **abdurrahmankaya.com** hangi projede/uygulamada duruyor (ekran görüntüsü yeterli).
+4. hPanel → Domainler → abdurrahmankaya.com → **DNS / Ad Sunucuları** sayfasının ekran görüntüsü (A kayıtları VPS'e gidiyor mu görmek için).
+5. Gerekirse SSH erişimi: Claude sana bilgisayarında bir SSH anahtarı oluşturup VPS'e eklemeyi adım adım gösterecek. **Root şifreni sohbete yazma.**
+
+**Yeni sohbette ilk mesaj olarak yaz:**
+> CLAUDE.md'yi oku, özellikle "VPS'e yayın" bölümünü. Hesap Kitap'ı Coolify ile abdurrahmankaya.com/takip adresine kurmak ve bilgisayardan her değişiklikte otomatik yayınlamak istiyorum. Gereken bilgileri tek tek benden iste.
+
+Kurulum bitince işleyiş şöyle olacak: Claude'a "şunu değiştir" de → Claude test eder → GitHub'a gönderir → Coolify kendiliğinden yayınlar (genelde 30–60 saniye; Claude bittiğini kontrol edip haber verir).
+
+**Kayıtların için:** Yeni adreste uygulama boş açılır (veriler adrese bağlı). Geçmeden önce eski adreste **Ayarlar → Yedek dosyası indir**, yeni adreste **Yedekten geri yükle**.
+
+## 6. Şu anki yayın (GitHub Pages)
+- Kod GitHub'da `claude/monthly-expense-tracker-3cktrg` dalında (deponun varsayılan dalı). Bu dala her gönderimde https://abdurrahmankayaart.github.io/hesapkitap/ güncellenir; VPS kurulana kadar bu adres çalışmaya devam eder.
+- Aynı anda GitHub Actions Android test APK'sını ve iOS derlemesini yapar: GitHub → depo → **Actions**.
+
+## 7. Bilmen gerekenler
 - **Veriler**: Uygulama verisi kullanıcının telefonunda/tarayıcısında durur, GitHub'da ya da bu klasörde değil. `localhost:8000`'de denerken girdiğin kayıtlar da sadece o tarayıcıda kalır.
 - **Gizli dosyalar**: `play-anahtari.txt` (Google Play imza anahtarı) depoda yok ve olmamalı; sende güvenli bir yerde dursun. GitHub Secrets'a nasıl ekleneceği `MAGAZA.md`'de.
 - **Bulut oturumu**: Buluttaki Claude oturumu ile yerel çalışma aynı GitHub deposunu kullanır. İkisinde aynı anda değişiklik yapma; geçmeden önce `git pull`.
 
-## 7. Bekleyen işler (özet — ayrıntı `CLAUDE.md`'de)
-1. **hesapkitap.abdurrahmankaya.com** alt alan adı: sen DNS'e `CNAME hesapkitap → abdurrahmankayaart.github.io` ekle, sonra Claude'a "DNS'i ekledim, alt alan adını bağla" de.
+## 8. Bekleyen işler (özet — ayrıntı `CLAUDE.md`'de)
+1. **abdurrahmankaya.com/takip** adresine Coolify ile kurulum ve bilgisayardan otomatik yayın (5. bölüm).
 2. Mağaza ekran görüntülerini yeni açılış ekranıyla yenile.
 3. Ayarlara "Ana ekran görünümü" seçeneği.
 4. Firebase ile Rumeysa'yla ortak bütçe (Firebase ayar bilgisi gerekiyor).
