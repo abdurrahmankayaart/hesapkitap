@@ -11,7 +11,8 @@
     "test": "node tests/e2e/run-all.js",
     "serve": "python3 -m http.server 8000",
     "icons": "node scripts/make-icons.js",
-    "store-shots": "node scripts/store-screenshots.js"
+    "store-shots": "node scripts/store-screenshots.js",
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",

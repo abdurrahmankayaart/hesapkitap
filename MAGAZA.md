@@ -10,7 +10,7 @@ Uygulama, web sürümüyle aynı kodu kullanan gerçek bir iOS ve Android uygula
 | Paket kimliği | `com.hesapkitap.app` (mağazaya ilk yüklemeden sonra değiştirilemez; değişmesini istersen şimdi söyle) |
 | Simgeler | Android'in tüm boyutları, iOS 1024×1024 mağaza simgesi (`store-icon-1024.png`), açılış ekranları |
 | İzin açıklamaları | Kamera ve fotoğraflar için Türkçe açıklamalar (iOS `Info.plist`, Android manifest) |
-| Gizlilik politikası | `https://abdurrahmankayaart.github.io/hesapkitap/privacy.html` (iki mağaza da zorunlu tutuyor) |
+| Gizlilik politikası | `https://abdurrahmankaya.com/takip/privacy.html` (iki mağaza da zorunlu tutuyor) |
 | Otomatik derleme | `.github/workflows/android.yml` (test APK'sı), `.github/workflows/ios.yml` (iOS derleme kontrolü) |
 
 ## Android telefonda hemen denemek

@@ -38,7 +38,7 @@ Kurulum, sunucu ya da hesap gerektirmez. Veriler telefonun/tarayıcının kendi 
 
 ## Telefonda kullanmak
 
-Uygulama `https://abdurrahmankayaart.github.io/hesapkitap/` adresinde yayında (GitHub Pages, `claude/monthly-expense-tracker-3cktrg` dalından). Telefonda bu adresi aç:
+Uygulama `https://abdurrahmankaya.com/takip/` adresinde yayında (kendi sunucumuz, Coolify; `claude/monthly-expense-tracker-3cktrg` dalına her gönderimde güncellenir). Eski adres `https://abdurrahmankayaart.github.io/hesapkitap/` de şimdilik açık. Telefonda bu adresi aç:
 - **iPhone (Safari):** Paylaş → *Ana Ekrana Ekle*
 - **Android (Chrome):** ⋮ → *Uygulamayı yükle* / *Ana ekrana ekle*
 

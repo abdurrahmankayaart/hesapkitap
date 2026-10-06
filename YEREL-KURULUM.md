@@ -32,7 +32,7 @@ npx playwright install chromium     # testler için tarayıcı (ilk seferde)
 npm test                            # 10 test, hepsi ✓ olmalı
 npm run serve                       # tarayıcıda http://localhost:8000
 ```
-Telefonda denemek için yayındaki adres: https://abdurrahmankayaart.github.io/hesapkitap/
+Telefonda denemek için yayındaki adres: https://abdurrahmankaya.com/takip/
 
 ## 4. Claude Code'u başlat
 Proje klasöründeyken:
