@@ -37,11 +37,11 @@ Bu dosya Claude Code'un projeyi tanıması içindir. Her oturumda otomatik okunu
 | `.github/workflows/` | `android.yml` (test APK + Secrets varsa imzalı AAB), `ios.yml` (simülatör derlemesi) |
 
 ## index.html içinde bölümler (yorum başlıklarıyla aranır: `/* ===...`)
-helpers · categories · starter templates (`PROFILES`, sadece örnek veri için) · sample data (`makeSample`) · storage (kişiler) · state (`S`) · currencies & gold · credit card statements · reminders · frame · **ÖZET** (`renderOzet`, `heroAlt`, `heroMain`) · quick text (`parseQuick`) · records · charts · **HAREKETLER** (`renderList`, `ltabs`, `calHtml`, `fixedPageHtml`, `txRow`) · category detail · BÜTÇE · HEDEFLER (goals/debts/assets) · REPORT · AYARLAR (`fold()` açılır-kapanır kartlar) · import/export · receipt photos (IndexedDB `kese-photos`, `readReceipt`, `parseReceipt`, `autoReceipt`) · tags · add/edit sheet (`openSheet`) · modal · actions (tek `click` dinleyicisi, `data-act` / `data-*`) · toast · backup + lock (PIN) · welcome (`askName`, `askStart`, `pickPerson`, tur).
+helpers · categories · starter templates (`PROFILES`, sadece örnek veri için) · sample data (`makeSample`) · storage (kişiler) · state (`S`) · currencies & gold · credit card statements · reminders · frame · **ÖZET** (`renderOzet`, `heroAlt`, `heroMain`) · quick text (`parseQuick`) · records · charts · **HAREKETLER** (`renderList`, `ltabs`, `calHtml`, `fixedPageHtml`, `txRow`) · category detail · BÜTÇE · HEDEFLER (goals/debts/assets) · REPORT · AYARLAR (`fold()` açılır-kapanır kartlar) · import/export · receipt photos (IndexedDB `kese-photos`, `readReceipt`, `parseReceipt`, `autoReceipt`; karekod: `readQr`, `parseQrText`, `extractReceipt` ikisini birleştirir) · tags · add/edit sheet (`openSheet`) · modal · actions (tek `click` dinleyicisi, `data-act` / `data-*`) · toast · phone notifications (`notifList`, `planNotifs`, `toggleNotifs`; her `save()` sonrası yeniden zamanlanır) · backup + lock (PIN) · welcome (`askName`, `askStart`, `pickPerson`, tur).
 
 ## Veri (localStorage anahtarları — ADLARINI DEĞİŞTİRME, kullanıcı verisi kaybolur)
 - `kese.people` kişi listesi; ilk kişi (`p0`) verisi `kese.v1`, diğerleri `kese.<id>`.
-- `<anahtar>.pin`, `<anahtar>.ui`, `kese.tour`, `kese.perms`, `kese.rates`, `kese.notified`, `kese.hero` (açılış kartı görünümü: `bugun` varsayılan, `klasik`, `pay`, `aliskanlik`, `gizli`).
+- `kese.notify` (`1` = telefon bildirimleri açık; yalnızca mağaza uygulaması), `<anahtar>.pin`, `<anahtar>.ui`, `kese.tour`, `kese.perms`, `kese.rates`, `kese.notified`, `kese.hero` (açılış kartı görünümü: `bugun` varsayılan, `klasik`, `pay`, `aliskanlik`, `gizli`).
 - `S` şeması `v: 3`: `tx[]` (id, type gelir/gider, amount, cat, date `YYYY-MM-DD`, note, method kart/nakit, card, tags[], fixedId, inst{g,i,n,total}, photo), `budgets{total,cats}`, `fixed[]`, `quick[]`, `customCats[]`, `goals[]`, `cards[]`, `debts[]`, `assets[]`, `rollover`, `dismissed`, `sample`, ayrıca `since`, `autoDone`, `lastBackup`…
 - Veri adrese (origin) bağlı: domain değişirse kullanıcı Ayarlar → Yedek ile taşımalı.
 
@@ -55,7 +55,7 @@ helpers · categories · starter templates (`PROFILES`, sadece örnek veri için
 npm install
 npx playwright install chromium     # ilk seferde
 npm run serve                       # http://localhost:8000
-npm test                            # 10 uçtan uca test
+npm test                            # 11 uçtan uca test
 ```
 - Testler örnek veriyi bugünün tarihine göre üretir; testte sabit tarih seçici kullanma.
 - Service worker `file://` altında çalışmaz; SW denemesi gerekirse `npm run serve` ile.
@@ -76,9 +76,9 @@ npm test                            # 10 uçtan uca test
 - **Webhook**: GitHub deposunda push webhook'u → `…:8000/webhooks/source/github/events/manual` (gizli anahtar Coolify uygulamasında).
 - VPS: Hostinger `srv1638664.hstgr.cloud`, IP `187.127.77.126`. DNS Hostinger'da, `A @` ve `A www` bu IP'ye gidiyor.
 
-**Taşınmadan kalanlar**
-- Karekod `store/karekod.png` yeni adresle yenilenecek (Python `qrcode`, okutup doğrula).
-- GitHub Pages: github.io'da açılınca "Hesap Kitap artık abdurrahmankaya.com/takip adresinde; önce Ayarlar → Yedek ile kayıtlarını indir" bandı (veri kendiliğinden taşınmaz). Görsel değişiklik: önce önizleme göster. Pages'i hemen kapatma.
+**Eski adres (github.io)**
+- `MOVED` sabiti: `github.io`'da açılınca Özet'in üstünde "yeni adresine taşındı" bandı çıkar (yedeği indir → yeni adrese git). Veri kendiliğinden taşınmaz. Pages'i kapatma; kullanıcılar taşınınca kapatılabilir.
+- Karekod `store/karekod.png` yeni adresi gösterir (3.5'te yenilendi).
 
 ## Kararlar (geçmiş)
 - Ad "Kese" → "Hesap Kitap" oldu; iç anahtarlarda "kese" kaldı (veri uyumu için).
@@ -89,11 +89,11 @@ npm test                            # 10 uçtan uca test
 
 ## Yapılacaklar / bekleyenler
 - [x] VPS'e yayın (abdurrahmankaya.com/takip) + `npm run deploy` — kuruldu 2026-10-06.
-- [ ] github.io'ya "taşındık" bandı ve yeni adresli karekod (yukarıda "Taşınmadan kalanlar").
+- [x] 3.5 (2026-10-06): github.io'da "taşındık" bandı, yeni karekod, Ayarlar → Görünüm'de "Ana ekrandaki üst kart" seçimi, Yedek'te "Drive / iCloud'a gönder" (paylaşım ekranı; destekleyen cihazlarda görünür) ve "son yedek X gün önce", fişte e-Arşiv karekodu okuma (`BarcodeDetector`, yoksa jsdelivr'den jsQR), mağaza ekran görüntüleri yenilendi.
+- [ ] **Telefon bildirimleri** kodu hazır (`@capacitor/local-notifications`, Ayarlar → Bildirimler yalnızca mağaza uygulamasında görünür) ama **gerçek telefonda denenmedi**; sahte eklentiyle test var (`tests/e2e/tyeni.js`). İlk test APK'sında dene: izin penceresi, saat 10/21 bildirimleri.
+- [ ] Karekod okuma gerçek fişle denenmedi (test, üretilmiş e-Arşiv karekoduyla). Gerçek fişte alan adları farklı çıkarsa `parseQrText` içine ekle.
 - [ ] (Vazgeçildi, isteğe bağlı) hesapkitap.abdurrahmankaya.com alt alan adı → GitHub Pages. Yapılacaksa DNS eklenmeden depoya `CNAME` dosyası gönderme.
-- [ ] **Mağaza ekran görüntüleri** eski açılış kartını gösteriyor → `npm run store-shots` ile yenile, `store/ekran-goruntuleri/{iphone,android}/` içine taşı.
-- [ ] **Ayarlar'a "Ana ekran görünümü" seçeneği** (bugun / klasik / pay / aliskanlik / gizli) — kod hazır (`heroAlt`), sadece arayüz yok.
 - [ ] **Firebase ile bulut/ortak bütçe** (Abdurrahman + Rumeysa): kullanıcıdan `firebaseConfig` bekleniyor; Google girişi, `firestore.rules` hazır. KVKK/gizlilik metni güncellenmeli.
 - [ ] **Mağazalar**: Google Play (25 $) ve Apple Developer (99 $/yıl) hesapları açılınca `MAGAZA.md`'ye göre ilerle. Play yükleme anahtarı kullanıcıda (`play-anahtari.txt`); GitHub Secrets'a eklenince Actions imzalı AAB üretir.
-- [ ] Rakip araştırmasından öneriler (öncelik sırası): telefon bildirimleri (Capacitor LocalNotifications), e-Arşiv fatura karekodu okuma, tek dokunuşla Drive/iCloud yedek + "son yedek X gün önce", kategori öğrenme ve tekrarlayan harcama tespiti, Android banka bildirimi okuma, ana ekran widget'ı, Apple Pay/Kestirmeler, altın günü takibi, 12 aylık taksit yükü grafiği.
+- [ ] Rakip araştırmasından öneriler (kalanlar): kategori öğrenme ve tekrarlayan harcama tespiti, Android banka bildirimi okuma, ana ekran widget'ı, Apple Pay/Kestirmeler, altın günü takibi, 12 aylık taksit yükü grafiği.
 - [ ] `tests/e2e/t10.js` (fiş OCR) eski yapay zeka bölümünü test ediyor; güncellenip `run-all`'a eklenmeli.

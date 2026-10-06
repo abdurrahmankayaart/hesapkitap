@@ -1,6 +1,6 @@
 {
   "name": "hesap-kitap",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "private": true,
   "description": "Hesap Kitap: aylık gelir ve gider takibi",
   "scripts": {
@@ -17,7 +17,8 @@
   "dependencies": {
     "@capacitor/android": "8.5.2",
     "@capacitor/core": "8.5.2",
-    "@capacitor/ios": "8.5.2"
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2",

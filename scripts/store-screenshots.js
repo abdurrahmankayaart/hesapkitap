@@ -12,6 +12,9 @@ const U = pathToFileURL(path.join(ROOT, 'index.html')).href;
     const pg = await ctx.newPage(); const errs=[]; pg.on('pageerror',e=>errs.push(e.message));
     await pg.goto(U+'#ozet'); await pg.waitForTimeout(400);
     await pg.fill('#wn','Abdurrahman'); await pg.click('#wName .save'); await pg.waitForTimeout(500); await pg.click('[data-wstart="sample"]'); await pg.waitForTimeout(700);
+    // Açılış kartı bugünkü harcamayı gösterir; ₺0 görünmesin diye bugüne iki kayıt gir.
+    for (const t of ['kahve 120', 'market 450']) { await pg.fill('#qtext', t); await pg.press('#qtext', 'Enter'); await pg.waitForTimeout(350); }
+    await pg.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await pg.waitForTimeout(100);
     const clean = () => pg.evaluate(() => { const w=document.getElementById('welcome'); if (w) w.hidden=true;
       document.querySelectorAll('#view > *').forEach(e => { if (/Örnek verilerle|Ana ekrana ekle|yükle/i.test(e.textContent) && e.textContent.length < 400) e.remove(); });
       const m=document.getElementById('qmic'); if (m) m.hidden=true; });

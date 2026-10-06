@@ -1,7 +1,7 @@
 // Tüm uçtan uca testleri sırayla çalıştırır. Kullanım: npm test
 // Her test çıktısında "errors []" / "errs: []" gibi boş hata listesi bekler; sayfa hatası ya da çökme varsa başarısız sayar.
 const { spawnSync } = require('child_process'), path = require('path');
-const TESTS = ['t2b', 't3b', 't5', 't6', 't7', 't11', 'tcal', 'thero', 'tpast', 'tvar'];
+const TESTS = ['t2b', 't3b', 't5', 't6', 't7', 't11', 'tcal', 'thero', 'tpast', 'tvar', 'tyeni'];
 let fail = 0;
 for (const t of TESTS) {
   const r = spawnSync(process.execPath, [path.join(__dirname, t + '.js')], {encoding: 'utf8', timeout: 180000});

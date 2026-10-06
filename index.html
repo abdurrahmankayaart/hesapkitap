@@ -703,7 +703,7 @@ const KEY = keyFor(ME);
 const FRESH = (() => { try { return !localStorage.getItem(KEY); } catch (e) { return true; } })();
 let S;
 function load() { try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* keep in memory */ } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* keep in memory */ } try { planNotifs(); } catch (e) { /* açılışta henüz hazır değil */ } }
 function loadUi() { try { return JSON.parse(localStorage.getItem(KEY + '.ui')) || {}; } catch (e) { return {}; } }
 function saveUi() { try { localStorage.setItem(KEY + '.ui', JSON.stringify({view, theme})); } catch (e) {} }
 S = load();
@@ -856,6 +856,9 @@ function go(v) { if (v !== view) buzz(5); view = v; saveUi(); if (location.hash.
 /* Üst kart görünümü: 'klasik' (tutarlar), 'pay' (günlük pay), 'aliskanlik' (olumlu alışkanlıklar), 'gizli' (tutarlar dokununca açılır) */
 let heroStyle = (() => { try { return localStorage.getItem('kese.hero') || 'bugun'; } catch (e) { return 'klasik'; } })();
 let heroPeek = false;
+const HERO_STYLES = [['bugun', 'Bugün', 'Bugün harcadığını gösterir; aylık toplam göz düğmesiyle açılır.'], ['klasik', 'Ay özeti', 'Elinde kalanı, gelirini ve giderini açıkça gösterir.'], ['pay', 'Günlük pay', 'Ay sonuna kadar bugün rahatça harcayabileceğin tutarı gösterir.'], ['aliskanlik', 'Alışkanlık', 'Tutar yerine harcamasız günlerini ve kayıt serini gösterir.'], ['gizli', 'Gizli', 'Tutarlar kapalı gelir; göz düğmesine dokununca açılır.']];
+/* Eski GitHub Pages adresinde açılırsa yeni adrese yönlendiren bant gösterilir (veri adrese bağlı, kendiliğinden taşınmaz). */
+const MOVED = /(^|\.)github\.io$/.test(location.hostname), NEW_URL = 'https://abdurrahmankaya.com/takip/';
 function heroAlt(inc, exp, sav, elapsed, dim, st, dailyTx) {
   const cm = isCurMonth(), today = dstr(now0), daysLeft = cm ? dim - elapsed + 1 : 0;
   const per = {}; dailyTx.filter(t => t.type === 'gider').forEach(t => { per[t.date] = (per[t.date] || 0) + t.amount; });
@@ -922,6 +925,8 @@ function renderOzet(el) {
   const dailyTx = txs.filter(t => !t.fixedId && !t.inst), dailyExp = sum(dailyTx, 'gider');
   let h = '';
 
+  if (MOVED) h += `<div class="banner"><div><b>Hesap Kitap yeni adresine taşındı.</b> Artık <b>abdurrahmankaya.com/takip</b> adresinde. ${S.tx.length && !S.sample ? 'Kayıtların bu eski adreste durduğu için kendiliğinden gelmez: önce yedeğini indir, sonra yeni adreste Ayarlar → Yedekten geri yükle de.' : 'Kayıt girmeye yeni adreste başla; ana ekrana da oradan ekle.'}</div>
+    <div class="row">${S.tx.length && !S.sample ? '<button class="btn sm dark" data-act="jsonDl">1. Yedeğimi indir</button>' : ''}<a class="btn sm${S.tx.length && !S.sample ? '' : ' dark'}" href="${NEW_URL}" style="text-decoration:none;color:inherit">${S.tx.length && !S.sample ? '2. ' : ''}Yeni adrese git</a></div></div>`;
   if (S.sample) h += `<div class="banner"><div><b>Örnek verilerle açıldı.</b> Uygulamayı kurcalayabilmen için 6 aylık uydurma kayıt ve iki birikim hedefi ekledik. Kendi harcamalarına geçmeden önce sil.</div>
     <div class="row"><button class="btn sm dark" data-act="clearSample">Örnekleri sil, sıfırdan başla</button></div></div>`;
   const lb = S.lastBackup || S.since, bdays = Math.floor((Date.now() - lb) / 864e5);
@@ -1566,19 +1571,26 @@ function renderSettings(el) {
     <div class="row" style="margin-top:10px"><button class="btn primary sm" data-act="importText">Satırları aktar</button><label class="btn sm">CSV dosyası seç<input type="file" id="impFile" accept=".csv,.tsv,.txt,text/csv" hidden></label></div>
     <div class="hint" id="impMsg" style="margin-top:8px"></div></section>
   <section class="card"><div class="sec-h"><h2>Yedek</h2></div>
-    <p class="hint" style="margin-bottom:10px">Kayıtlar yalnızca bu cihazda durur. Ayda bir yedek al; telefon değiştirirken yedeği yeni telefonda geri yükle. <b>${S.lastBackup ? `Son yedek: ${parseD(dstr(new Date(S.lastBackup))).getDate()} ${AY[new Date(S.lastBackup).getMonth()]} ${new Date(S.lastBackup).getFullYear()}` : 'Henüz yedek alınmadı.'}</b></p>
+    <p class="hint" style="margin-bottom:10px">Kayıtlar yalnızca bu cihazda durur. Ayda bir yedek al; telefon değiştirirken yedeği yeni telefonda geri yükle. <b>${S.lastBackup ? `Son yedek: ${(n => n <= 0 ? 'bugün' : n === 1 ? 'dün' : n + ' gün önce')(-daysUntil(new Date(S.lastBackup)))} (${new Date(S.lastBackup).getDate()} ${AY[new Date(S.lastBackup).getMonth()]} ${new Date(S.lastBackup).getFullYear()})` : 'Henüz yedek alınmadı.'}</b></p>
+    ${CAN_SHARE ? `<div class="row" style="margin-bottom:8px"><button class="btn sm primary" data-act="jsonShare">Drive / iCloud'a gönder</button></div><p class="hint" style="margin-bottom:10px">Açılan paylaşım ekranında Google Drive'ı ya da “Dosyalara Kaydet”i (iCloud) seç; yedek telefonun dışında da dursun.</p>` : ''}
     <div class="row"><button class="btn sm" data-act="csvDl">Excel için CSV indir</button><button class="btn sm" data-act="csvCopy">Tabloyu kopyala</button></div>
     <div class="row" style="margin-top:8px"><button class="btn sm" data-act="jsonDl">Yedek dosyası indir</button><button class="btn sm" data-act="jsonCopy">Yedeği kopyala</button><label class="btn sm">Yedekten geri yükle<input type="file" id="restoreFile" accept=".json,application/json" hidden></label></div>
     <textarea class="inp" id="copyBox" readonly hidden style="margin-top:10px"></textarea></section>
   <section class="card"><div class="sec-h"><h2>Görünüm</h2></div>
-    <div class="segs">${[['system', 'Telefona göre'], ['light', 'Açık'], ['dark', 'Koyu']].map(([k, l]) => `<button class="seg-b" data-themeset="${k}" aria-pressed="${theme === k}">${l}</button>`).join('')}</div></section>
+    <div class="segs">${[['system', 'Telefona göre'], ['light', 'Açık'], ['dark', 'Koyu']].map(([k, l]) => `<button class="seg-b" data-themeset="${k}" aria-pressed="${theme === k}">${l}</button>`).join('')}</div>
+    <p class="hint" style="margin:16px 0 8px"><b>Ana ekrandaki üst kart</b></p>
+    <div class="segs">${HERO_STYLES.map(([k, l]) => `<button class="seg-b" data-heroset="${k}" aria-pressed="${heroStyle === k}">${l}</button>`).join('')}</div>
+    <p class="hint" style="margin-top:8px">${(HERO_STYLES.find(x => x[0] === heroStyle) || HERO_STYLES[0])[2]}</p></section>
+  ${LN ? `<section class="card"><div class="sec-h"><h2>Bildirimler</h2>${notifOn() ? '<span class="pill good">Açık</span>' : ''}</div>
+    <p class="hint" style="margin-bottom:10px">Ödeme gününden bir gün önce, kart son ödemesinden iki gün önce ve harcama girmediğin akşamlar saat 21'de hatırlatırız. Bildirimler telefonda hazırlanır; hiçbir bilgin dışarı gitmez.</p>
+    <div class="row"><button class="btn sm ${notifOn() ? '' : 'primary'}" data-act="toggleNotifs">${notifOn() ? 'Bildirimleri kapat' : 'Bildirimleri aç'}</button></div></section>` : ''}
   <section class="card"><div class="sec-h"><h2>Uygulama kilidi</h2>${getPin() ? '<span class="pill good">Açık</span>' : ''}</div>
     <p class="hint" style="margin-bottom:10px">Uygulamayı açarken 4 haneli PIN sorar; telefonu eline alan biri kayıtlarını göremez. PIN'i unutursan kurtarılamaz.</p>
     <div class="row">${getPin() ? '<button class="btn sm" data-act="setPin">PIN\'i değiştir</button><button class="btn sm danger" data-act="removePin">Kilidi kaldır</button>' : '<button class="btn sm primary" data-act="setPin">PIN koy</button>'}</div></section>
   <section class="card"><div class="sec-h"><h2>Sıfırla</h2></div><div class="row">
     ${S.sample ? '<button class="btn sm" data-act="clearSample">Örnek verileri sil</button>' : '<button class="btn sm" data-act="loadSample">Örnek verileri yükle</button>'}
     <button class="btn sm danger" data-act="wipe">Tüm verileri sil</button><button class="btn sm" data-act="tour">Tanıtım turunu göster</button></div>
-    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.4</p></section>`;
+    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.5</p></section>`;
   $('#impFile', el).addEventListener('change', e => readFile(e.target.files[0], doImport));
   $('#restoreFile', el).addEventListener('change', e => readFile(e.target.files[0], restore));
 }
@@ -1665,6 +1677,11 @@ function download(name, text, mime) {
   try { const blob = new Blob(['﻿' + text], {type: mime}), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('İndirme başlatıldı'); }
   catch (e) { toast('İndirme engellendi. “Kopyala” seçeneğini kullan.'); }
 }
+const CAN_SHARE = (() => { try { return !!navigator.canShare && navigator.canShare({files: [new File(['{}'], 'a.json', {type: 'application/json'})]}); } catch (e) { return false; } })();
+function shareBackup() {
+  const file = new File([JSON.stringify(S)], `hesapkitap-yedek-${todayStr()}.json`, {type: 'application/json'});
+  navigator.share({files: [file], title: 'Hesap Kitap yedeği'}).then(() => { markBackup(); render(); toast('Yedek gönderildi'); }, () => {});
+}
 function copyOut(text, label) {
   const box = $('#copyBox');
   const fallback = () => { if (!box) { toast('Kopyalanamadı. Ayarlar → Yedek bölümünden tekrar dene.'); return; } box.hidden = false; box.value = text; box.focus(); box.select(); toast('Metin seçildi, elle kopyalayabilirsin.'); };
@@ -1743,18 +1760,55 @@ async function readReceipt(canvas) {
   }
   const out = await T.recognize(img, 'tur'); return parseReceipt(out && out.data ? out.data.text : '');
 }
-async function extractReceipt(blob, canvas) {
-  const p = await readReceipt(canvas), c = p.store ? guessCat(p.store, 'gider') : null;
+/* e-Arşiv fatura ve yeni nesil yazarkasa fişlerindeki karekodda tutar ve tarih yazılıdır; okununca fotoğraftan tahmine gerek kalmaz. */
+let jsqrP = null;
+function loadJsQR() {
+  return jsqrP || (jsqrP = new Promise((res, rej) => {
+    if (window.jsQR) return res(window.jsQR);
+    const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    sc.onload = () => window.jsQR ? res(window.jsQR) : rej(new Error('jsqr')); sc.onerror = () => { jsqrP = null; rej(new Error('jsqr')); };
+    document.head.appendChild(sc);
+  }));
+}
+function parseQrText(txt) {
+  const get = k => { const m = String(txt).match(new RegExp('"' + k + '"\\s*:\\s*"?([^",}]+)', 'i')); return m ? m[1].trim() : ''; };
+  const amount = parseAmount(get('odenecek') || get('vergidahil') || get('toplam'));
+  if (!(amount > 0 && amount < 1e7)) return null;
+  let date = parseDate(get('tarih'));
+  if (date) { const t = parseD(date).getTime(); if (isNaN(t) || t > Date.now() + 864e5 || t < Date.now() - 366 * 864e5) date = null; }
+  return {amount, date};
+}
+async function readQr(file) {
+  let texts = [];
+  try {
+    const bmp = await createImageBitmap(file);
+    if ('BarcodeDetector' in window) try { texts = (await new BarcodeDetector({formats: ['qr_code']}).detect(bmp)).map(x => x.rawValue); } catch (e) {}
+    if (!texts.length) {
+      const J = await loadJsQR(), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      const x = c.getContext('2d'); x.drawImage(bmp, 0, 0, c.width, c.height);
+      const r = J(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height); if (r && r.data) texts = [r.data];
+    }
+  } catch (e) {}
+  for (const t of texts) { const p = parseQrText(t); if (p) return p; }
+  return null;
+}
+async function extractReceipt(blob, canvas, file) {
+  const [q, o] = await Promise.all([file ? readQr(file) : null, readReceipt(canvas).catch(() => null)]);
+  if (!q && !o) throw new Error('read');
+  const p = o || {amount: 0, date: null, store: ''};
+  if (q) { p.amount = q.amount; if (q.date) p.date = q.date; p.qr = true; }
+  const c = p.store ? guessCat(p.store, 'gider') : null;
   return {...p, cat: c && c.type === 'gider' ? c.id : null};
 }
 // Photo in → record out. Opens the form only when the amount could not be read.
 async function autoReceipt(file) {
   let res; try { res = await shrink(file); } catch (e) { toast('Fotoğraf açılamadı.'); return; }
   toast('Fiş okunuyor…');
-  let p = null; try { p = await extractReceipt(res.blob, res.canvas); } catch (e) { p = null; }
+  let p = null; try { p = await extractReceipt(res.blob, res.canvas, file); } catch (e) { p = null; }
   if (p && p.amount > 0) {
     const cat = p.cat || 'diger', date = p.date || todayStr();
-    const ids = addRecords({type: 'gider', cat, amount: p.amount, note: p.store || 'Fiş', date, method: 'kart', card: S.cards.length ? S.cards[0].id : undefined});
+    const ids = addRecords({type: 'gider', cat, amount: p.amount, note: p.store || (p.qr ? 'Fatura' : 'Fiş'), date, method: 'kart', card: S.cards.length ? S.cards[0].id : undefined});
     const tx = S.tx.find(t => t.id === ids[0]); tx.photo = true; putPhoto(tx.id, res.blob);
     const d = parseD(date); cur = {y: d.getFullYear(), m: d.getMonth()};
     save(); render(); buzz(12);
@@ -1775,14 +1829,14 @@ $('#rcFile').addEventListener('change', async e => {
   if (F.id) { msg.textContent = 'Fiş eklendi.'; return; }
   msg.textContent = 'Fiş okunuyor…';
   try {
-    const p = await extractReceipt(res.blob, res.canvas); if (!F) return;
+    const p = await extractReceipt(res.blob, res.canvas, f); if (!F) return;
     const got = [];
     if (p.cat && !F.catTouched) { F.cat = p.cat; F.catTouched = true; got.push('kategori'); }
     if (p.amount && !(+F.amt.replace(',', '.') > 0)) { F.amt = String(p.amount).replace('.', ','); got.push('tutar'); }
     if (p.date) { F.date = p.date; got.push('tarih'); }
     if (p.store && !$('#txNote').value.trim()) { $('#txNote').value = p.store; $('#txNote').dispatchEvent(new Event('change')); got.push('mağaza'); }
     paintSheet();
-    msg.textContent = (got.length ? `Okundu: ${got.join(', ')}. Kaydetmeden önce kontrol et.` : 'Fişten tutar okunamadı, elle gir.');
+    msg.textContent = (got.length ? `${p.qr ? 'Karekoddan okundu' : 'Okundu'}: ${got.join(', ')}. Kaydetmeden önce kontrol et.` : 'Fişten tutar okunamadı, elle gir.');
   } catch (x) { if (F) msg.textContent = 'Fiş okunamadı (ilk seferde internet gerekir). Fotoğraf yine eklendi.'; }
 });
 $('#rcDel').addEventListener('click', () => { if (!F) return; F.photoBlob = null; F.photoRemoved = true; showThumb(null); $('#rcMsg').textContent = ''; });
@@ -2033,6 +2087,8 @@ document.addEventListener('click', e => {
     else if (act === 'csvDl') { download(`kese-${todayStr()}.csv`, csvText(';'), 'text/csv;charset=utf-8'); markBackup(); }
     else if (act === 'csvCopy') { copyOut(csvText('\t'), 'Tablo'); markBackup(); }
     else if (act === 'jsonDl') { download(`kese-yedek-${todayStr()}.json`, JSON.stringify(S), 'application/json'); markBackup(); }
+    else if (act === 'jsonShare') shareBackup();
+    else if (act === 'toggleNotifs') toggleNotifs();
     else if (act === 'jsonCopy') { copyOut(JSON.stringify(S), 'Yedek'); markBackup(); }
     else if (act === 'addPerson') formModal('Yeni kişi', [{k: 'name', label: 'Adı', ph: 'örn. Rumeysa', max: 24}], {}, v => { if (!v.name) return 'Bir ad yaz.';
       if (!PEOPLE.list.length) PEOPLE.list.push(ME);
@@ -2084,6 +2140,7 @@ document.addEventListener('click', e => {
   else if ((b = t.closest('[data-calall]'))) { calAll = b.dataset.calall === '1'; render(); }
   else if ((b = t.closest('[data-fall]'))) { listFilter.all = !listFilter.all; render(); }
   else if ((b = t.closest('[data-themeset]'))) { theme = b.dataset.themeset; saveUi(); if (theme === 'system') document.documentElement.removeAttribute('data-theme'); applyTheme(); render(); }
+  else if ((b = t.closest('[data-heroset]'))) { heroStyle = b.dataset.heroset; heroPeek = false; try { localStorage.setItem('kese.hero', heroStyle); } catch (x) {} render(); }
   else if ((b = t.closest('[data-go]'))) go(b.dataset.go);
   else if ((b = t.closest('[data-ft]'))) { listFilter.type = b.dataset.ft; render(); }
   else if ((b = t.closest('[data-gdep]'))) { const g = S.goals.find(x => x.id === b.dataset.gdep); if (g) goalMove(g, 1); }
@@ -2117,6 +2174,44 @@ function toast(msg, action) {
 window.addEventListener('kese-updated', () => toast('Hesap Kitap güncellendi', {label: 'Yenile', fn: () => location.reload()}));
 
 let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (view === 'ozet') render(); }, 150); });
+/* ================= phone notifications (yalnızca mağaza uygulaması; cihazda zamanlanır, sunucu yok) ================= */
+const LN = NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications || null;
+const notifOn = () => { try { return localStorage.getItem('kese.notify') === '1'; } catch (e) { return false; } };
+function notifList() {
+  const out = [], n = new Date(), at = (d, h) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, 0, 0);
+  const push = (when, title, body) => { if (when > n && out.length < 40) out.push({id: 1000 + out.length, title, body, schedule: {at: when, allowWhileIdle: true}}); };
+  for (let k = 0; k < 2; k++) {
+    const y = new Date(n.getFullYear(), n.getMonth() + k, 1), mk = mkey(y.getFullYear(), y.getMonth());
+    const paid = new Set(S.tx.filter(t => t.fixedId && t.date.slice(0, 7) === mk).map(t => t.fixedId));
+    S.fixed.forEach(f => { if (paid.has(f.id)) return; const due = new Date(y.getFullYear(), y.getMonth(), Math.min(f.day, daysIn(y.getFullYear(), y.getMonth())));
+      push(at(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 1), 10), f.type === 'gelir' ? 'Yarın gelir günü' : 'Yarın ödeme günü', `${f.name} · ${money(f.amount)}${f.auto ? ' · kendiliğinden eklenecek' : ''}`); });
+  }
+  S.cards.forEach(c => { const pp = prevPeriod(c), due = dueAfter(pp.end, c.dueDay), amt = cardSpend(c, pp);
+    if (amt > 0) push(at(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 2), 10), 'Kart son ödeme günü yaklaşıyor', `${c.name} ekstresi · ${money(amt)} · 2 gün kaldı`); });
+  S.debts.forEach(d => { const l = debtLeft(d); if (!l || !d.due) return; const due = parseD(d.due);
+    push(at(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 1), 10), 'Yarın vade günü', `${d.name} · ${money(l)}`); });
+  const td = todayStr(), entered = S.tx.some(t => t.date === td && !t.fixedId);
+  for (let i = entered ? 1 : 0; i < 7; i++) push(at(new Date(n.getFullYear(), n.getMonth(), n.getDate() + i), 21), 'Hesap Kitap', 'Bugünkü harcamalarını yazmak ister misin? Bir dakikanı alır.');
+  return out;
+}
+let notifT;
+function planNotifs() {
+  if (!LN) return;
+  clearTimeout(notifT);
+  notifT = setTimeout(async () => { try {
+    const pend = await LN.getPending(); if (pend && pend.notifications && pend.notifications.length) await LN.cancel({notifications: pend.notifications.map(x => ({id: x.id}))});
+    if (!notifOn() || S.sample) return;
+    const list = notifList(); if (list.length) await LN.schedule({notifications: list});
+  } catch (e) {} }, 800);
+}
+async function toggleNotifs() {
+  if (!LN) return;
+  if (notifOn()) { try { localStorage.removeItem('kese.notify'); } catch (e) {} planNotifs(); render(); toast('Bildirimler kapatıldı'); return; }
+  let ok = false; try { const r = await LN.requestPermissions(); ok = r && r.display === 'granted'; } catch (e) {}
+  if (!ok) { toast('Bildirim izni verilmedi. Telefonun ayarlarından açabilirsin.'); return; }
+  try { localStorage.setItem('kese.notify', '1'); } catch (e) {}
+  planNotifs(); render(); toast('Bildirimler açıldı');
+}
 /* ================= backup + lock ================= */
 function markBackup() { S.lastBackup = Date.now(); S.backupSnooze = 0; save(); }
 async function hashPin(p) {
@@ -2241,6 +2336,7 @@ function boot() {
 autoFixed();
 render(true);
 boot();
+planNotifs();
 if (S.goals.some(g => g.unit && g.unit !== 'TRY') || S.assets.length) refreshRates();
 })();
 </script>

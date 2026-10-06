@@ -1,0 +1,70 @@
+// 3.5: Ayarlar'da ana ekran görünümü seçimi, eski adreste "taşındık" bandı, fişteki karekoddan tutar okuma.
+const { chromium } = require('playwright');
+const path = require('path'), fs = require('fs'), { pathToFileURL } = require('url');
+const ROOT = path.resolve(__dirname, '../..');
+const OUT = path.join(__dirname, 'out'); fs.mkdirSync(OUT, {recursive: true}); process.chdir(OUT);
+const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({viewport: {width: 390, height: 844}, deviceScaleFactor: 2, colorScheme: 'light', locale: 'tr-TR'});
+  await ctx.addInitScript(() => { localStorage.setItem('kese.tour', '1'); });
+  await ctx.route(OLD + '**', r => { const f = new URL(r.request().url()).pathname.replace('/hesapkitap/', '') || 'index.html'; const p = path.join(ROOT, f); return fs.existsSync(p) ? r.fulfill({path: p}) : r.fulfill({status: 404, body: ''}); });
+  const errs = [], fail = [];
+  const check = (name, ok) => { console.log(ok ? 'ok ' : 'FAIL', name); if (!ok) fail.push(name); };
+  const start = async (pg, url) => { pg.on('pageerror', e => errs.push(e.message)); await pg.goto(url); await pg.waitForTimeout(400);
+    await pg.fill('#wn', 'Abdurrahman'); await pg.click('#wName .save'); await pg.waitForTimeout(500); await pg.click('[data-wstart="blank"]'); await pg.waitForTimeout(800); };
+  const add = async (pg, t) => { await pg.fill('#qtext', t); await pg.press('#qtext', 'Enter'); await pg.waitForTimeout(400); };
+
+  // 1) yeni adres (burada dosyadan): bant yok, ana ekran görünümü seçilebiliyor ve kalıcı
+  const pg = await ctx.newPage(); await start(pg, pathToFileURL(path.join(ROOT, 'index.html')).href + '#ozet');
+  await add(pg, 'market 1200');
+  check('yeni adreste taşındık bandı yok', !(await pg.textContent('#view')).includes('yeni adresine taşındı'));
+  await pg.click('#gear'); await pg.waitForTimeout(400);
+  check('varsayılan görünüm Bugün', await pg.getAttribute('[data-heroset="bugun"]', 'aria-pressed') === 'true');
+  await pg.locator('[data-heroset="bugun"]').scrollIntoViewIfNeeded(); await pg.screenshot({path: 'yeni-ayarlar-gorunum.png'});
+  for (const k of ['klasik', 'pay', 'aliskanlik', 'gizli']) {
+    await pg.click(`[data-heroset="${k}"]`); await pg.waitForTimeout(200);
+    check(`${k} seçildi ve kaydedildi`, await pg.getAttribute(`[data-heroset="${k}"]`, 'aria-pressed') === 'true' && await pg.evaluate(() => localStorage.getItem('kese.hero')) === k);
+  }
+  await pg.click('#gear'); await pg.waitForTimeout(400);
+  check('gizli görünümde tutar kapalı', (await pg.textContent('.hero')).includes('• • • •'));
+  check('taşma yok', await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0);
+
+  // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
+  await pg.setInputFiles('#qcamFile', path.join(__dirname, 'fixtures', 'earsiv-karekod.png'));
+  await pg.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.amount === 1249.5); } catch (e) { return false; } }, null, {timeout: 120000}).then(() => check('karekoddan 1.249,50 okundu', true), () => check('karekoddan 1.249,50 okundu', false));
+  await pg.close();
+
+  // 3) eski adres (github.io): bant görünür, yedek indirme ve yeni adres bağlantısı var
+  const old = await ctx.newPage(); await start(old, OLD + '#ozet');
+  let t = await old.textContent('#view');
+  check('eski adreste kayıt yokken bant: yeni adrese git', t.includes('yeni adresine taşındı') && !t.includes('Yedeğimi indir'));
+  await add(old, 'kahve 120'); t = await old.textContent('#view');
+  check('kayıt varken yedek indirme adımı', t.includes('1. Yedeğimi indir') && t.includes('2. Yeni adrese git'));
+  check('bağlantı yeni adrese', await old.getAttribute('.banner a', 'href') === 'https://abdurrahmankaya.com/takip/');
+  check('taşma yok (eski adres)', await old.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0);
+  await old.screenshot({path: 'yeni-tasindi-bandi.png'});
+
+  // 4) bildirimler (mağaza uygulaması taklidi): açınca zamanlanır, kayıt girince bu akşamki hatırlatma kalkar, kapatınca hepsi iptal
+  const nctx = await b.newContext({viewport: {width: 390, height: 844}, locale: 'tr-TR'});
+  await nctx.addInitScript(() => { localStorage.setItem('kese.tour', '1'); const st = window.__ln = {pending: [], perm: 0};
+    window.Capacitor = {isNativePlatform: () => true, Plugins: {LocalNotifications: {
+      requestPermissions: async () => { st.perm++; return {display: 'granted'}; }, getPending: async () => ({notifications: st.pending.map(x => ({id: x.id}))}),
+      cancel: async o => { const ids = o.notifications.map(x => x.id); st.pending = st.pending.filter(x => !ids.includes(x.id)); }, schedule: async o => { st.pending.push(...o.notifications); }}}}; });
+  const np = await nctx.newPage(); await start(np, pathToFileURL(path.join(ROOT, 'index.html')).href + '#ozet');
+  const pend = () => np.evaluate(() => window.__ln.pending.map(x => ({t: x.title, b: x.body, at: +new Date(x.schedule.at)})));
+  await np.waitForTimeout(1200); check('kapalıyken bildirim zamanlanmaz', (await pend()).length === 0);
+  await np.click('#gear'); await np.waitForTimeout(300); await np.click('[data-act="toggleNotifs"]'); await np.waitForTimeout(1300);
+  let pl = await pend(); const evening = new Date().getHours() < 21 ? 7 : 6;
+  check(`açınca ${evening} akşam hatırlatması`, pl.length === evening && pl.every(x => x.at > Date.now() && new Date(x.at).getHours() === 21));
+  await np.click('#gear'); await np.waitForTimeout(300); await add(np, 'kahve 120'); await np.waitForTimeout(1300);
+  pl = await pend(); check('bugün kayıt girince bu akşamki kalkar', pl.length === 6 && pl.every(x => new Date(x.at).getDate() !== new Date().getDate()));
+  await np.evaluate(() => { document.querySelector('#gear').click(); }); await np.waitForTimeout(300);
+  await np.click('[data-act="toggleNotifs"]'); await np.waitForTimeout(1300);
+  check('kapatınca hepsi iptal', (await pend()).length === 0);
+  await nctx.close();
+
+  console.log('errs:', JSON.stringify(errs));
+  await b.close();
+  process.exit(fail.length ? 1 : 0);
+})();
