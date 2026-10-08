@@ -90,6 +90,8 @@ npm test                            # 11 uçtan uca test
 ## Yapılacaklar / bekleyenler
 - [x] VPS'e yayın (abdurrahmankaya.com/takip) + `npm run deploy` — kuruldu 2026-10-06.
 - [x] 3.5 (2026-10-06): github.io'da "taşındık" bandı, yeni karekod, Ayarlar → Görünüm'de "Ana ekrandaki üst kart" seçimi, Yedek'te "Drive / iCloud'a gönder" (paylaşım ekranı; destekleyen cihazlarda görünür) ve "son yedek X gün önce", fişte e-Arşiv karekodu okuma (`BarcodeDetector`, yoksa jsdelivr'den jsQR), mağaza ekran görüntüleri yenilendi.
+- [x] 3.5 (2026-10-08): açılış kartı (`bugun`) sadeleşti — tek rakam + ince bütçe çizgisi (`.hbar`), aylık toplam kutuları yalnızca göze basınca çıkar. Koyu tema koyulaştı (`--bg:#0B0F18`). Kullanıcı halka + hafta şeridi ve tam bordo zeminli denemeleri beğenmedi; **sade ve koyu** istiyor.
+- [ ] `tests/e2e/t7.js` fiş adımı (OCR, internetten Tesseract) ara sıra zaman aşımına düşüyor; tek başına geçiyor. Bekleme süresi uzatılmalı.
 - [ ] **Telefon bildirimleri** kodu hazır (`@capacitor/local-notifications`, Ayarlar → Bildirimler yalnızca mağaza uygulamasında görünür) ama **gerçek telefonda denenmedi**; sahte eklentiyle test var (`tests/e2e/tyeni.js`). İlk test APK'sında dene: izin penceresi, saat 10/21 bildirimleri.
 - [ ] Karekod okuma gerçek fişle denenmedi (test, üretilmiş e-Arşiv karekoduyla). Gerçek fişte alan adları farklı çıkarsa `parseQrText` içine ekle.
 - [ ] (Vazgeçildi, isteğe bağlı) hesapkitap.abdurrahmankaya.com alt alan adı → GitHub Pages. Yapılacaksa DNS eklenmeden depoya `CNAME` dosyası gönderme.

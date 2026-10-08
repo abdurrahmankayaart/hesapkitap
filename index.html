@@ -5,7 +5,7 @@
 <script>/* Alt klasörde (ör. /takip) sondaki "/" eksikse ekle; yoksa sw.js, manifest ve simgeler yanlış yerden yüklenir. */(function(l){if(/^https?:$/.test(l.protocol)&&!/\/$|\.[a-z0-9]+$/i.test(l.pathname))l.replace(l.pathname+"/"+l.search+l.hash)})(location)</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F3EDE4" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#141A29" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0B0F18" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Hesap Kitap">
@@ -46,23 +46,23 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#141A29; --surface:#212C46; --surface-2:#2A3654; --ink:#F1EADF; --ink-2:#D4C4B0; --muted:#A39A8C; --line:#323E5E;
+    --bg:#0B0F18; --surface:#151C2C; --surface-2:#1E273B; --ink:#F1EADF; --ink-2:#D4C4B0; --muted:#A39A8C; --line:#252F46;
     --accent:#D9956A; --on-accent:#212C46; --accent-soft:#3D2F2A; --ring:#D9956A;
     --teak:#C27A4E; --on-teak:#FFFFFF; --canvas:#D4C4B0;
     --in:#9CAA99; --out:#D9605F; --save:#D9956A;
     --good:#A9B8A5; --good-soft:#26302A; --warn:#D9956A; --warn-soft:#3A2B22; --bad:#E07372; --bad-soft:#3A1E22;
-    --grid:#2A3552; --axis:#3D4A6C; --shadow:0 1px 2px rgba(0,0,0,.45); --scrim:rgba(0,0,0,.6);
+    --grid:#1E273B; --axis:#33405F; --shadow:0 1px 2px rgba(0,0,0,.6); --scrim:rgba(0,0,0,.7);
     --tint:18%; --tint-2:30%;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#141A29; --surface:#212C46; --surface-2:#2A3654; --ink:#F1EADF; --ink-2:#D4C4B0; --muted:#A39A8C; --line:#323E5E;
+  --bg:#0B0F18; --surface:#151C2C; --surface-2:#1E273B; --ink:#F1EADF; --ink-2:#D4C4B0; --muted:#A39A8C; --line:#252F46;
   --accent:#D9956A; --on-accent:#212C46; --accent-soft:#3D2F2A; --ring:#D9956A;
   --teak:#C27A4E; --on-teak:#FFFFFF; --canvas:#D4C4B0;
   --in:#9CAA99; --out:#D9605F; --save:#D9956A;
   --good:#A9B8A5; --good-soft:#26302A; --warn:#D9956A; --warn-soft:#3A2B22; --bad:#E07372; --bad-soft:#3A1E22;
-  --grid:#2A3552; --axis:#3D4A6C; --shadow:0 1px 2px rgba(0,0,0,.45); --scrim:rgba(0,0,0,.6);
+  --grid:#1E273B; --axis:#33405F; --shadow:0 1px 2px rgba(0,0,0,.6); --scrim:rgba(0,0,0,.7);
   --tint:18%; --tint-2:30%;
   color-scheme:dark;
 }
@@ -438,8 +438,11 @@ details.fold[open]>summary .i{transform:rotate(180deg)}
 .verse figcaption{margin-top:6px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .hero-note .btn{background:#D4C4B0;color:#212C46;border-color:transparent}
 .hero .io .card{border-color:transparent}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hero{background:linear-gradient(160deg,#2A3654,#212C46);border:1px solid #323E5E}}
-:root[data-theme="dark"] .hero{background:linear-gradient(160deg,#2A3654,#212C46);border:1px solid #323E5E}
+.hbar{height:6px;border-radius:99px;background:var(--surface-2);margin-top:16px;overflow:hidden}
+.hbar i{display:block;height:100%;border-radius:99px;background:#D4C4B0}
+.hbar-l{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--muted);margin-top:7px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hero{background:linear-gradient(160deg,#1A2236,#121828);border:1px solid #252F46;--surface:#1E273B;--surface-2:#2A3550;--line:#2A3550}}
+:root[data-theme="dark"] .hero{background:linear-gradient(160deg,#1A2236,#121828);border:1px solid #252F46;--surface:#1E273B;--surface-2:#2A3550;--line:#2A3550}
 /* kategori renklerini palete yaklaştır */
 [style*="--c"]{--c2:color-mix(in oklab,var(--c) 58%,#8C7A64);--c-bg:color-mix(in srgb,var(--c2) var(--tint),var(--surface));--c-bub:color-mix(in srgb,var(--c2) var(--tint-2),var(--surface));--c-ink:color-mix(in srgb,var(--c2) 78%,var(--ink))}
 .avatar{background:#932C2E!important;color:#F1EADF!important}
@@ -874,13 +877,17 @@ function heroAlt(inc, exp, sav, elapsed, dim, st, dailyTx) {
   }
   if (heroStyle === 'bugun') {
     const tl = dailyTx.filter(t => t.date === today && t.type === 'gider'), tExp = sum(tl), left = inc - exp - sav;
-    const mm = v => heroPeek ? money(v) : '₺ • • • •';
-    return `<div class="big num">${cm ? money(tExp) : money(exp)}</div>
-      <div class="sub">${cm ? (tl.length ? `bugün harcadığın · ${tl.length} kayıt` : 'bugün henüz harcama yok') : `${AY[cur.m]} ayında harcadığın`}</div>
-      ${cm ? `<button class="peek" data-act="heroPeek" aria-pressed="${heroPeek}" aria-expanded="${heroPeek}">${svgI(heroPeek ? 'eyeoff' : 'eye', 18)}<span>${heroPeek ? 'Aylık toplamı gizle' : 'Aylık toplamı göster'}</span></button>
-      <div class="io">
-        <div class="card"><small><i class="dot" style="background:var(--out)"></i>${AY[cur.m]} gideri</small><b class="num">${mm(exp)}</b><em class="num">${heroPeek && exp ? `günlük ${money(dailyTx.filter(t => t.type === 'gider').reduce((a, t) => a + t.amount, 0))} · sabit ${money(exp - dailyTx.filter(t => t.type === 'gider').reduce((a, t) => a + t.amount, 0))}` : '&nbsp;'}</em></div>
-        <div class="card"><small><i class="dot" style="background:var(--in)"></i>${inc && left >= 0 ? 'Elinde kalan' : 'Gelir'}</small><b class="num">${mm(inc && left >= 0 ? left : inc)}</b><em class="num">${heroPeek && inc ? (left >= 0 ? `gelir ${money(inc)}` : 'bu ayki gelirin') : '&nbsp;'}</em></div>
+    if (!cm) return `<div class="big num">${money(exp)}</div><div class="sub">${AY[cur.m]} ayında harcadığın</div>`;
+    /* İnce çizgi: ayın bütçesinin (bütçe yoksa gelirin) ne kadarı harcandı. Aşılınca kırmızıya dönmez, yalnızca dolar. */
+    const B = S.budgets.total || 0, base = B > 0 ? B : inc, p = base > 0 ? Math.min(1, exp / base) : 0, pool = B > 0 ? B - exp : left;
+    return `<div class="big num">${money(tExp)}</div>
+      <div class="sub">${tl.length ? `bugün harcadığın · ${tl.length} kayıt` : 'bugün henüz harcama yok'}</div>
+      ${base > 0 ? `<div class="hbar" role="img" aria-label="${B > 0 ? 'Bütçenin' : 'Gelirinin'} yüzde ${Math.round(p * 100)} kadarı harcandı"><i style="width:${p * 100}%"></i></div>
+      <div class="hbar-l num"><span>${p >= 1 ? (B > 0 ? 'bu ayın bütçesi doldu' : 'bu ayın geliri harcandı') : `${B > 0 ? 'bütçe' : 'gelirden harcanan'} %${Math.round(p * 100)}${B > 0 ? ' doldu' : ''}`}</span>${pool > 0 ? `<span>günlük payın ${money(Math.floor(pool / Math.max(1, daysLeft) / 10) * 10)}</span>` : ''}</div>` : ''}
+      <button class="peek" data-act="heroPeek" aria-pressed="${heroPeek}" aria-expanded="${heroPeek}">${svgI(heroPeek ? 'eyeoff' : 'eye', 18)}<span>${heroPeek ? 'Aylık toplamı gizle' : 'Aylık toplamı göster'}</span></button>
+      ${heroPeek ? `<div class="io">
+        <div class="card"><small><i class="dot" style="background:var(--out)"></i>${AY[cur.m]} gideri</small><b class="num">${money(exp)}</b><em class="num">${exp ? `günlük ${money(sum(dailyTx, 'gider'))} · sabit ${money(exp - sum(dailyTx, 'gider'))}` : '&nbsp;'}</em></div>
+        <div class="card"><small><i class="dot" style="background:var(--in)"></i>${inc && left >= 0 ? 'Elinde kalan' : 'Gelir'}</small><b class="num">${money(inc && left >= 0 ? left : inc)}</b><em class="num">${inc ? (left >= 0 ? `gelir ${money(inc)}` : 'bu ayki gelirin') : '&nbsp;'}</em></div>
       </div>` : ''}`;
   }
   if (heroStyle === 'aliskanlik') {
