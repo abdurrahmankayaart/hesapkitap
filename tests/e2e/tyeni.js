@@ -30,6 +30,14 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   check('gizli görünümde tutar kapalı', (await pg.textContent('.hero')).includes('• • • •'));
   check('taşma yok', await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0);
 
+  // 1b) çok büyük tutar: sormadan kaydetmez
+  const txN = () => pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1')).tx.length);
+  const n0 = await txN(); await pg.fill('#qtext', 'hediye 167.765.000'); await pg.press('#qtext', 'Enter'); await pg.waitForTimeout(400);
+  check('milyonluk tutar onay soruyor, kaydetmiyor', await txN() === n0 && (await pg.textContent('#modal')).includes('doğru mu?'));
+  await pg.click('#modal [data-mclose]'); await pg.waitForTimeout(300);
+  check('vazgeçince kayıt yok, yazı duruyor', await txN() === n0 && (await pg.inputValue('#qtext')).includes('167.765.000'));
+  await pg.fill('#qtext', ''); await add(pg, 'hediye 167.765'); check('167.765 sorusuz kaydedilir', await txN() === n0 + 1);
+
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
   await pg.setInputFiles('#qcamFile', path.join(__dirname, 'fixtures', 'earsiv-karekod.png'));
   await pg.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.amount === 1249.5); } catch (e) { return false; } }, null, {timeout: 120000}).then(() => check('karekoddan 1.249,50 okundu', true), () => check('karekoddan 1.249,50 okundu', false));

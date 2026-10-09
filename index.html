@@ -1070,7 +1070,7 @@ function wireQuickText() {
     help.hidden = !!v;
     if (!v) { prev.innerHTML = ''; return; }
     const p = parseQuick(v), c = p.cat ? catById(p.cat) : null;
-    prev.innerHTML = `${p.amount ? `<span class="tag amt num">${p.type === 'gelir' ? '+' : ''}${money(p.amount)}${p.inst > 1 ? ` · ${p.inst}×${money(p.amount / p.inst)}` : ''}</span>` : '<span class="tag" style="color:var(--bad)">tutar yaz</span>'}
+    prev.innerHTML = `${p.amount >= BIG ? '<span class="tag" style="color:var(--warn)">çok büyük tutar, kontrol et</span>' : ''}${p.amount ? `<span class="tag amt num">${p.type === 'gelir' ? '+' : ''}${money(p.amount)}${p.inst > 1 ? ` · ${p.inst}×${money(p.amount / p.inst)}` : ''}</span>` : '<span class="tag" style="color:var(--bad)">tutar yaz</span>'}
       ${c ? `<span class="tag" ${cs(c)}>${ci(c, 15)} ${esc(c.name)}</span>` : `<span class="tag">${ci(catById('diger'), 15)} ${p.type === 'gelir' ? 'Diğer gelir' : 'Diğer'}</span>`}
       <span class="tag">${esc(p.dateLabel)}</span>${p.method === 'nakit' ? '<span class="tag">Nakit</span>' : ''}${p.tags.map(t => `<span class="tag" style="color:var(--accent)">#${esc(t)}</span>`).join('')}${p.note ? `<span class="tag">“${esc(p.note)}”</span>` : ''}
       <button type="button" class="linkbtn" id="qedit">Ayrıntılı düzenle</button>`;
@@ -1094,9 +1094,12 @@ function wireQuickText() {
     });
   }
 }
-function commitQuick(inp) {
+/* Bir milyon ve üstü neredeyse her zaman fazladan sıfır ya da nokta demektir; kaydetmeden önce sor. */
+const BIG = 1e6, BIG_TXT = 'Bu çok büyük bir tutar. Fazladan sıfır ya da nokta yazılmış olabilir; yanlışsa vazgeçip düzelt.';
+function commitQuick(inp, sure) {
   const p = parseQuick(inp.value);
   if (!(p.amount > 0)) { toast('Tutarı da yaz: örneğin “kahve 120”'); buzz(30); return; }
+  if (p.amount >= BIG && !sure) { buzz(30); ask(`${money(p.amount)} doğru mu?`, BIG_TXT, 'Evet, doğru', () => commitQuick(inp, true)); return; }
   const cat = p.cat || (p.type === 'gelir' ? 'digerg' : 'diger');
   const meth = p.method || 'kart', ids = addRecords({type: p.type, cat, amount: p.amount, note: p.note, date: p.date, method: meth, tags: p.tags.length ? p.tags : undefined, card: meth === 'kart' && p.type === 'gider' && S.cards.length ? S.cards[0].id : undefined}, p.inst);
   inp.value = '';
@@ -1177,7 +1180,7 @@ window.addEventListener('scroll', () => { tip.hidden = true; }, {passive: true})
 let listTab = 'gunluk';
 const ltabs = () => `<div class="tabs" style="grid-template-columns:1fr 1fr 1fr" role="group" aria-label="Görünüm"><button data-ltab="gunluk" aria-pressed="${listTab === 'gunluk'}">Günlük</button><button data-ltab="sabit" aria-pressed="${listTab === 'sabit'}">Sabit</button><button data-ltab="takvim" aria-pressed="${listTab === 'takvim'}">Takvim</button></div>`;
 let calSel = null, calAll = false;
-const shortM = v => v >= 10000 ? Math.round(v / 1000) + 'b' : v >= 1000 ? (Math.round(v / 100) / 10).toString().replace('.', ',') + 'b' : String(Math.round(v));
+const shortM = v => v >= 1e6 ? (Math.round(v / 1e5) / 10).toString().replace('.', ',') + 'Mn' : v >= 10000 ? Math.round(v / 1000) + 'b' : v >= 1000 ? (Math.round(v / 100) / 10).toString().replace('.', ',') + 'b' : String(Math.round(v));
 function calHtml() {
   const y = cur.y, m = cur.m, n = new Date(y, m + 1, 0).getDate(), first = (new Date(y, m, 1).getDay() + 6) % 7, today = dstr(now0);
   const txs = monthTx(y, m).filter(t => t.type === 'gider' && (calAll || (!t.fixedId && !t.inst)));
@@ -1945,6 +1948,7 @@ $('#txForm').addEventListener('submit', e => {
   const amount = Math.round(parseFloat((F.amt || '0').replace(',', '.')) * 100) / 100;
   if (!(amount > 0)) { $('#txErr').textContent = 'Tutarı gir. Tuş takımıyla örneğin 250 yazabilirsin.'; buzz(30); return; }
   if (!F.cat) { $('#txErr').textContent = 'Bir kategori seç.'; buzz(30); return; }
+  if (amount >= BIG && F.bigOk !== amount) { buzz(30); ask(`${money(amount)} doğru mu?`, BIG_TXT, 'Evet, doğru', () => { F.bigOk = amount; $('#txForm').requestSubmit(); }); return; }
   if ($('#txTag').value.trim()) { addTag($('#txTag').value); $('#txTag').value = ''; }
   const rec = {type: F.type, cat: F.cat, amount, note: F.note, date: F.date, method: F.method, tags: F.tags.length ? [...F.tags] : undefined,
     card: F.method === 'kart' && F.type === 'gider' && S.cards.length ? (F.card || S.cards[0].id) : undefined};
