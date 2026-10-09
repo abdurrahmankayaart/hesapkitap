@@ -50,6 +50,14 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await add(pg, 'ayakkabı 2,450'); check('hızlı yazmada 2,450 = 2450', await amtOf('Ayakkabı') === 2450);
   await add(pg, 'simit 12,50'); check('hızlı yazmada 12,50 = 12,5', await amtOf('Simit') === 12.5);
 
+  // 1d) tarih: ileri ve geçmiş güne kayıt
+  const dOf = note => pg.evaluate(n => (JSON.parse(localStorage.getItem('kese.v1')).tx.find(t => t.note === n) || {}).date, note);
+  const iso = k => { const d = new Date(Date.now() + k * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const addOn = async (note, pick) => { await pg.click('#fab'); await pg.waitForTimeout(400); await tap(['5', '0']); await pg.click('[data-c="market"]'); await pg.fill('#txNote', note); await pick(); await pg.click('#txSave'); await pg.waitForTimeout(400); };
+  await addOn('Yarınki', () => pg.click('#sheet [data-d="1"]')); check('Yarın düğmesi ileri tarihe kaydeder', await dOf('Yarınki') === iso(1));
+  await addOn('Eski', async () => { await pg.fill('#txDate', iso(-20)); check('seçilen gün düğmede yazıyor', await pg.getAttribute('#txDateL', 'aria-pressed') === 'true' && !(await pg.textContent('#txDateT')).includes('Başka')); });
+  check('geçmiş güne kaydeder', await dOf('Eski') === iso(-20));
+
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
   await pg.setInputFiles('#qcamFile', path.join(__dirname, 'fixtures', 'earsiv-karekod.png'));
   await pg.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.amount === 1249.5); } catch (e) { return false; } }, null, {timeout: 120000}).then(() => check('karekoddan 1.249,50 okundu', true), () => check('karekoddan 1.249,50 okundu', false));
