@@ -38,6 +38,18 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   check('vazgeçince kayıt yok, yazı duruyor', await txN() === n0 && (await pg.inputValue('#qtext')).includes('167.765.000'));
   await pg.fill('#qtext', ''); await add(pg, 'hediye 167.765'); check('167.765 sorusuz kaydedilir', await txN() === n0 + 1);
 
+  // 1c) düzenleme: ilk rakam eski tutarın yerine geçer; "167,765" binlik sayılır
+  const amtOf = note => pg.evaluate(n => (JSON.parse(localStorage.getItem('kese.v1')).tx.find(t => t.note === n) || {}).amount, note);
+  const tap = async ks => { for (const k of ks) await pg.click(`#keypad button:text-is("${k}")`); };
+  await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(400); await pg.click('[data-tx]:has-text("Hediye")'); await pg.waitForTimeout(400);
+  await tap(['1', '6', '7', ',', '7', '6', '5']); check('düzenlemede yeni tutar eskisini siler', (await pg.textContent('#amtDisp')).trim() === '₺167.765');
+  await pg.click('#txSave'); await pg.waitForTimeout(400); check('düzeltilen tutar kaydedildi', await amtOf('Hediye') === 167765);
+  await pg.click('[data-tx]:has-text("Hediye")'); await pg.waitForTimeout(400); await pg.click('#amtDisp'); await tap(['4', '5', ',', '5']);
+  check('tutara dokununca temizlenir', (await pg.textContent('#amtDisp')).trim() === '₺45,5'); await pg.click('#txSave'); await pg.waitForTimeout(400);
+  await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(400);
+  await add(pg, 'ayakkabı 2,450'); check('hızlı yazmada 2,450 = 2450', await amtOf('Ayakkabı') === 2450);
+  await add(pg, 'simit 12,50'); check('hızlı yazmada 12,50 = 12,5', await amtOf('Simit') === 12.5);
+
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
   await pg.setInputFiles('#qcamFile', path.join(__dirname, 'fixtures', 'earsiv-karekod.png'));
   await pg.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.amount === 1249.5); } catch (e) { return false; } }, null, {timeout: 120000}).then(() => check('karekoddan 1.249,50 okundu', true), () => check('karekoddan 1.249,50 okundu', false));

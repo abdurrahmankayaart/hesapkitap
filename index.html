@@ -223,10 +223,10 @@ h3{font-size:16px;font-weight:700}
 .seg-b[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:transparent}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .cal .wd{font-size:11px;color:var(--muted);text-align:center;font-weight:700;padding-bottom:2px}
-.cal button{aspect-ratio:1/1.08;border:0;border-radius:11px;background:color-mix(in srgb,var(--out) var(--h,0%),var(--surface-2));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;color:var(--ink);min-width:0}
+.cal button{aspect-ratio:1/.92;border:0;border-radius:11px;background:color-mix(in srgb,var(--out) var(--h,0%),var(--surface-2));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;color:var(--ink);min-width:0}
 .cal button b{font-size:13px;line-height:1.1}
-.cal button small{font-size:10.5px;font-weight:700;color:var(--ink-2);min-height:13px;line-height:1.2;font-variant-numeric:tabular-nums}
-.cal button.hot b,.cal button.hot small{color:#fff}
+.cal button.hot b{color:#fff}
+.calwrap{display:flex;flex-direction:column;gap:14px}
 .cal button.fut{opacity:.45}
 .cal button.today b{text-decoration:underline;text-underline-offset:2px}
 .cal button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
@@ -1002,12 +1002,9 @@ function renderOzet(el) {
     : `<div class="card empty">Bu ay henüz günlük harcama yok. Yukarıya “kahve 120” yaz, fişin fotoğrafını çek ya da + düğmesine bas.</div>`}
   </section>`;
 
-  h += `<section class="card"><div class="sec-h"><h2>Günlük harcama</h2><span class="sub num">ort. ${money(sum(txs.filter(t => !t.fixedId && !t.inst), 'gider') / Math.max(1, elapsed))}/gün</span></div>
-    <div class="legend"><span><i class="dot" style="background:var(--out)"></i>Gider</span><span><i class="ln"></i>Ortalama</span><span class="muted">sabit ödeme ve taksitler hariç</span></div>
-    <div class="chart" id="dailyChart"></div></section>`;
+  h += `<section aria-label="Harcama takvimi"><div class="sec-h"><h2>Takvim</h2><span class="sub">güne dokun, harcamalarını gör</span></div><div class="calwrap">${calHtml()}</div></section>`;
 
   el.innerHTML = h;
-  dailyChart($('#dailyChart'), txs, dim, elapsed);
   wireQuickText();
 }
 function profileGrid() {
@@ -1046,7 +1043,7 @@ function parseQuick(text) {
     const idx = GUNLOW.indexOf(m[2].replace(' günü', '')); let diff = (now.getDay() - idx + 7) % 7; if (m[1] && diff === 0) diff = 7;
     setD(new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff), diff === 0 ? 'Bugün' : GUN[idx]); cut(m[0]);
   }
-  if ((m = s.match(/\s(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:,\d{1,2})?|\d+\.\d{1,2})\s*(bin|k)?(?=\s)/))) {
+  if ((m = s.match(/\s(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,3}(?:,\d{3})+(?!\d)|\d+(?:,\d{1,2})?|\d+\.\d{1,2})\s*(bin|k)?(?=\s)/))) {
     r.amount = Math.round(parseAmount(m[1]) * (m[2] ? 1000 : 1) * 100) / 100; cut(m[0]);
   }
   const words = s.split(/\s+/).filter(w => w && !FILLER.has(w));
@@ -1126,24 +1123,6 @@ function removeTx(id, silent) {
 
 /* ================= charts ================= */
 function topRounded(x, y, w, h, r) { r = Math.min(r, w / 2, h); if (h <= 0) return ''; return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; }
-function dailyChart(el, txs, n, elapsed) {
-  const vals = Array(n).fill(0);
-  txs.filter(t => t.type === 'gider' && !t.fixedId && !t.inst).forEach(t => vals[+t.date.slice(8) - 1] += t.amount);
-  const W = Math.max(280, el.clientWidth || 320), H = 170, pl = 34, pr = 4, pt = 10, pb = 22;
-  const max = niceMax(Math.max(...vals, 100)), iw = W - pl - pr, ih = H - pt - pb, bw = iw / n, gap = Math.max(1.5, Math.min(4, bw * .28));
-  const y = v => pt + ih - v / max * ih;
-  const avg = vals.slice(0, elapsed).reduce((a, b) => a + b, 0) / Math.max(1, elapsed);
-  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Günlük harcama grafiği">`;
-  [0, .5, 1].forEach(f => { const v = max * f; s += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(${f ? '--grid' : '--axis'})"/><text x="${pl - 6}" y="${y(v) + 3.5}" text-anchor="end">${kfmt(v)}</text>`; });
-  vals.forEach((v, i) => {
-    const isToday = isCurMonth() && i === now0.getDate() - 1;
-    if (v > 0) s += `<path d="${topRounded(pl + i * bw + gap / 2, y(v), bw - gap, ih + pt - y(v), 4)}" fill="var(--out)"${isToday ? ' stroke="var(--ink)" stroke-width="1.5"' : ''}/>`;
-  });
-  if (avg > 0) s += `<line x1="${pl}" x2="${W - pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="var(--ink-2)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
-  [1, 5, 10, 15, 20, 25, n].forEach(d => { if (d === 25 && n - 25 < 3) return; s += `<text x="${pl + (d - .5) * bw}" y="${H - 6}" text-anchor="middle">${d}</text>`; });
-  vals.forEach((v, i) => { const dt = new Date(cur.y, cur.m, i + 1); s += `<rect x="${pl + i * bw}" y="${pt}" width="${bw}" height="${ih}" fill="transparent" data-tip="${i + 1} ${AY[cur.m]} ${GUN[dt.getDay()]}|${v ? money(v) : 'harcama yok'}"/>`; });
-  el.innerHTML = s + '</svg>';
-}
 const incOf = t => sum(t.filter(x => x.cat !== 'devir'), 'gelir');
 function trendChart(el, list) {
   let months = list;
@@ -1180,7 +1159,6 @@ window.addEventListener('scroll', () => { tip.hidden = true; }, {passive: true})
 let listTab = 'gunluk';
 const ltabs = () => `<div class="tabs" style="grid-template-columns:1fr 1fr 1fr" role="group" aria-label="Görünüm"><button data-ltab="gunluk" aria-pressed="${listTab === 'gunluk'}">Günlük</button><button data-ltab="sabit" aria-pressed="${listTab === 'sabit'}">Sabit</button><button data-ltab="takvim" aria-pressed="${listTab === 'takvim'}">Takvim</button></div>`;
 let calSel = null, calAll = false;
-const shortM = v => v >= 1e6 ? (Math.round(v / 1e5) / 10).toString().replace('.', ',') + 'Mn' : v >= 10000 ? Math.round(v / 1000) + 'b' : v >= 1000 ? (Math.round(v / 100) / 10).toString().replace('.', ',') + 'b' : String(Math.round(v));
 function calHtml() {
   const y = cur.y, m = cur.m, n = new Date(y, m + 1, 0).getDate(), first = (new Date(y, m, 1).getDay() + 6) % 7, today = dstr(now0);
   const txs = monthTx(y, m).filter(t => t.type === 'gider' && (calAll || (!t.fixedId && !t.inst)));
@@ -1194,7 +1172,7 @@ function calHtml() {
     <div class="cal" role="grid" aria-label="${AY[m]} ${y} harcama takvimi">${['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(w => `<span class="wd">${w}</span>`).join('')}${'<span></span>'.repeat(first)}`;
   for (let d = 1; d <= n; d++) {
     const k = dstr(new Date(y, m, d)), v = per[k] || 0, heat = v ? Math.round(14 + 70 * Math.pow(v / max, .7)) : 0;
-    h += `<button class="${heat > 48 ? 'hot' : ''}${k === today ? ' today' : ''}${k > today ? ' fut' : ''}" style="--h:${heat}%" data-calday="${k}" aria-pressed="${k === calSel}" aria-label="${d} ${AY[m]}: ${v ? money(v) : 'harcama yok'}"><b>${d}</b><small>${v ? shortM(v) : ''}</small></button>`;
+    h += `<button class="${heat > 48 ? 'hot' : ''}${k === today ? ' today' : ''}${k > today ? ' fut' : ''}" style="--h:${heat}%" data-calday="${k}" aria-pressed="${k === calSel}" aria-label="${d} ${AY[m]}: ${v ? money(v) : 'harcama yok'}"><b>${d}</b></button>`;
   }
   h += `</div>${topD ? `<p class="hint" style="margin-top:10px">En çok harcadığın gün <b style="color:var(--ink)">${parseD(topD).getDate()} ${AY[m]} ${GUN[parseD(topD).getDay()]}</b>: ${money(per[topD])}</p>` : ''}</div>`;
   if (calSel) {
@@ -1623,7 +1601,8 @@ function guessCat(text, type) {
 function parseAmount(s) {
   s = String(s).replace(/[₺\s]|tl/gi, '');
   if (!s) return NaN;
-  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  if (/^-?\d{1,3}(,\d{3})+$/.test(s)) s = s.replace(/,/g, '');
+  else if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
   else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
   return parseFloat(s);
 }
@@ -1871,7 +1850,7 @@ const sheet = $('#sheet');
 let F = null;
 function openSheet(o = {}) {
   const t = o.tx;
-  F = t ? {id: t.id, type: t.type, amt: String(t.amount).replace('.', ','), cat: t.cat, date: t.date, method: t.method || 'kart', note: t.note || '', fixedId: t.fixedId, inst: t.inst, catTouched: true, tags: [...(t.tags || [])], card: t.card || ''}
+  F = t ? {id: t.id, type: t.type, amt: String(t.amount).replace('.', ','), cat: t.cat, date: t.date, method: t.method || 'kart', note: t.note || '', fixedId: t.fixedId, inst: t.inst, catTouched: true, fresh: true, tags: [...(t.tags || [])], card: t.card || ''}
         : {id: null, type: o.type || 'gider', amt: o.amount ? String(o.amount).replace('.', ',') : '', cat: o.cat || null, date: o.date || defaultDate(), method: o.method || 'kart', note: o.note || '', catTouched: !!o.cat, n: o.inst || 1, tags: [...(o.tags || [])], card: ''};
   showThumb(null); $('#rcMsg').textContent = ''; $('#txTag').value = '';
   if (t && t.photo) getPhoto(t.id).then(b => { if (b && F && F.id === t.id) showThumb(URL.createObjectURL(b)); });
@@ -1907,15 +1886,21 @@ function paintAmt() {
   const val = +F.amt.replace(',', '.') || 0;
   el.className = 'amt num' + (!val ? ' zero' : '') + (F.type === 'gelir' ? ' gelir' : '');
   const n = +$('#txInst').value;
-  $('#amtSub').textContent = F.inst ? `${F.inst.i}/${F.inst.n}. taksit · toplam ${money(F.inst.total)}` : (n > 1 && F.type === 'gider' && val ? `${n} ay × ${money(Math.round(val / n * 100) / 100)} · ilk taksit seçilen tarihte` : '');
+  $('#amtSub').textContent = F.fresh && val ? 'Yeni tutarı yaz, eskisinin yerine geçer' : F.inst ? `${F.inst.i}/${F.inst.n}. taksit · toplam ${money(F.inst.total)}` : (n > 1 && F.type === 'gider' && val ? `${n} ay × ${money(Math.round(val / n * 100) / 100)} · ilk taksit seçilen tarihte` : '');
 }
 function key(k) {
   if (!F) return;
+  // Kayıt düzenlenirken ilk rakam eski tutarın yerine geçer; tek tek silmek gerekmez.
+  const fresh = F.fresh; F.fresh = false;
   if (k === '⌫' || k === 'Backspace') F.amt = F.amt.slice(0, -1);
-  else if (k === ',' || k === '.') { if (!F.amt.includes(',')) F.amt = (F.amt || '0') + ','; }
-  else if (/^\d$/.test(k)) { const [i, d] = F.amt.split(','); if (d !== undefined) { if (d.length < 2) F.amt += k; } else if (i.length < 9) F.amt = (i === '0' ? '' : F.amt) + k; }
+  else if (k === ',' || k === '.') { if (fresh) F.amt = '0,'; else if (!F.amt.includes(',')) F.amt = (F.amt || '0') + ','; }
+  else if (/^\d$/.test(k)) { const [i, d] = fresh ? [''] : F.amt.split(',');
+    if (fresh) F.amt = k;
+    else if (d !== undefined) { if (d.length < 2) F.amt += k; else if (i !== '0' && i.length <= 6) F.amt = i + d + k; /* "167,765": ayraç binlik olarak yazılmış */ }
+    else if (i.length < 9) F.amt = (i === '0' ? '' : F.amt) + k; }
   $('#txErr').textContent = ''; buzz(4); paintAmt();
 }
+$('#amtDisp').addEventListener('click', () => { if (!F || !F.amt) return; F.amt = ''; F.fresh = false; buzz(5); paintAmt(); });
 $('#keypad').addEventListener('click', e => { const b = e.target.closest('button'); if (b) key(b.textContent.trim()); });
 $('#txInst').addEventListener('change', paintAmt);
 $('#txCard').addEventListener('change', e => { if (F) F.card = e.target.value; });
