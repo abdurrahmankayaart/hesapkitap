@@ -773,11 +773,16 @@ function ring(pct, color, size = 72, stroke = 9, label = '') {
   return `<div class="ring" style="width:${size}px;height:${size}px"><svg width="${size}" height="${size}" aria-hidden="true"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="${stroke}"/>${p > 0 ? `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c * p} ${c}"/>` : ''}</svg><span style="font-size:${Math.round(size * .2)}px">${label}</span></div>`;
 }
 
+/* Tutarı her ay değişen faturalar (elektrik, su…) tutarsız kaydedilir; ödenince tutar sorulur. */
+const famt = f => f.amount > 0 ? money(f.amount) : 'tutar ödeyince sorulur';
+/* Bir sabit kalemin önceki aylarda gerçekten ödenen tutarları (en yeni 4 ay). */
+const fhist = (f, skip) => { const by = {}; S.tx.forEach(t => { if (t.fixedId === f.id && t.date.slice(0, 7) !== skip) by[t.date.slice(0, 7)] = (by[t.date.slice(0, 7)] || 0) + t.amount; });
+  return Object.keys(by).sort().reverse().slice(0, 4).map(k => `${AY[+k.slice(5) - 1].slice(0, 3)} ${money(by[k])}`).join(' · '); };
 function autoFixed() {
   const n = new Date(), y = n.getFullYear(), m = n.getMonth(), k = mkey(y, m), dim = daysIn(y, m);
   const done = new Set(S.autoDone[k] || []);
   S.tx.filter(t => t.fixedId && t.date.slice(0, 7) === k).forEach(t => done.add(t.fixedId));
-  const due = S.fixed.filter(f => f.auto && !done.has(f.id) && Math.min(f.day, dim) <= n.getDate());
+  const due = S.fixed.filter(f => f.auto && f.amount > 0 && !done.has(f.id) && Math.min(f.day, dim) <= n.getDate());
   if (!due.length) return 0;
   const ids = due.map(f => { const rec = {id: uid(), type: f.type || 'gider', cat: f.cat, amount: f.amount, note: f.name, date: `${y}-${pad(m + 1)}-${pad(Math.min(f.day, dim))}`, method: 'kart', fixedId: f.id, ts: Date.now()}; S.tx.push(rec); return rec.id; });
   S.autoDone = {[k]: [...(S.autoDone[k] || []), ...due.map(f => f.id)]};
@@ -812,7 +817,7 @@ function reminders() {
   const out = [], n = new Date(), td = todayStr(), y = n.getFullYear(), m = n.getMonth(), dim = daysIn(y, m), k = mkey(y, m);
   const paid = new Set(S.tx.filter(t => t.fixedId && t.date.slice(0, 7) === k).map(t => t.fixedId));
   S.fixed.forEach(f => { if (paid.has(f.id)) return; const dd = Math.min(f.day, dim) - n.getDate();
-    if (dd >= 0 && dd <= 2) out.push({id: 'fx' + f.id, tone: 'warn', text: `<b>${esc(f.name)}</b> ${whenTxt(dd)} · ${f.type === 'gelir' ? '+' : ''}${money(f.amount)}${f.auto ? ' · otomatik eklenecek' : ''}`, act: f.auto ? '' : `<button class="btn sm" data-pay="${f.id}">${f.type === 'gelir' ? 'Geldi' : 'Ödendi'}</button>`}); });
+    if (dd >= 0 && dd <= 2) out.push({id: 'fx' + f.id, tone: 'warn', text: `<b>${esc(f.name)}</b> ${whenTxt(dd)} · ${f.type === 'gelir' && f.amount > 0 ? '+' : ''}${famt(f)}${f.auto && f.amount > 0 ? ' · otomatik eklenecek' : ''}`, act: f.auto ? '' : `<button class="btn sm" data-pay="${f.id}">${f.type === 'gelir' ? 'Geldi' : 'Ödendi'}</button>`}); });
   const byCat = {}; S.tx.filter(t => t.type === 'gider' && t.date.slice(0, 7) === k).forEach(t => byCat[t.cat] = (byCat[t.cat] || 0) + t.amount);
   const fixedCats = new Set([...S.fixed.map(f => f.cat), ...S.tx.filter(t => t.inst && t.date.slice(0, 7) === k).map(t => t.cat)]);
   Object.entries(S.budgets.cats).forEach(([c, b]) => { const v = byCat[c] || 0; if (b && v >= b * .85 && !fixedCats.has(c))
@@ -1198,7 +1203,7 @@ function fixedPageHtml() {
     const waiting = unpaid.filter(f => f.type !== 'gelir').reduce((a, f) => a + f.amount, 0);
     h += `<section class="card"><div class="sec-h"><div><h2>Sabit kalemler</h2>${fx.length ? `<div class="sub num">${fx.length - unpaid.length}/${fx.length} işlendi · düzenlemek için dokun</div>` : ''}</div><button class="btn sm" data-act="newFixed">+ Ekle</button></div>
       ${fx.length ? `<div>${fx.map(f => { const c = catById(f.cat), paid = paidIds.has(f.id), due = isCurMonth() && !paid && f.day < now0.getDate() && new Date(cur.y, cur.m, f.day, 23).getTime() > (S.since || 0), inc = f.type === 'gelir';
-        return `<div class="li ${paid ? 'done' : ''}" ${cs(c)}><button class="li-main" data-editfixed="${f.id}" aria-label="${esc(f.name)} düzenle"><span class="bub">${ci(c)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(f.name)}${f.auto ? '<span class="tag-auto">otomatik</span>' : ''}</span><span class="m num" style="display:block">Ayın ${f.day}. günü · ${inc ? '+' : ''}${money(f.amount)}${due ? ' · <span class="pill warn">günü geçti</span>' : ''}</span></span></button>
+        return `<div class="li ${paid ? 'done' : ''}" ${cs(c)}><button class="li-main" data-editfixed="${f.id}" aria-label="${esc(f.name)} düzenle"><span class="bub">${ci(c)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(f.name)}${f.auto ? '<span class="tag-auto">otomatik</span>' : ''}</span><span class="m num" style="display:block">Ayın ${f.day}. günü · ${inc && f.amount > 0 ? '+' : ''}${famt(f)}${due ? ' · <span class="pill warn">günü geçti</span>' : ''}</span>${(h => h ? `<span class="m num" style="display:block">${h}</span>` : '')(fhist(f, mkey(cur.y, cur.m)))}</span></button>
         ${paid ? `<span class="check">✓ ${inc ? 'Geldi' : 'Ödendi'}</span>` : `<button class="btn sm" data-pay="${f.id}">${inc ? 'Geldi' : 'Ödendi'}</button>`}</div>`; }).join('')}</div>
       ${unpaid.length > 1 ? `<div class="row" style="margin-top:10px;justify-content:space-between"><span class="hint num">${waiting ? money(waiting) + ' ödeme bekliyor' : ''}</span><button class="btn sm" data-act="payAll">Hepsini işle</button></div>` : ''}
       ${!S.fixed.some(f => f.auto) ? `<p class="hint" style="margin-top:10px">Bir kaleme dokunup “otomatik ekle”yi açarsan günü gelince kendiliğinden işlenir.</p>` : ''}`
@@ -1545,7 +1550,7 @@ function renderSettings(el) {
       ${p.id === ME.id ? '<button class="btn sm" data-act="rename">Adımı değiştir</button>' : `<div class="row"><button class="btn sm" data-switch="${p.id}">Geç</button><button class="btn sm danger" data-delperson="${p.id}">Sil</button></div>`}</div>`).join('')}</div></section>
   ${standalone ? '' : `<section class="card" style="background:var(--accent-soft);border:0"><h2>Telefona uygulama olarak kur</h2><p class="hint" style="margin-top:6px;color:var(--ink-2)"><b>iPhone:</b> Safari'de Paylaş → Ana Ekrana Ekle. <b>Android:</b> Chrome'da ⋮ → Uygulamayı yükle. Ana ekrandan tam ekran açılır, internet olmadan da çalışır. Android'de simgeye basılı tutunca “Harcama ekle” kısayolu da çıkar.</p></section>`}
   ${fold('fixed', 'Sabit kalemler', S.fixed.length ? S.fixed.length + ' kalem' : '', `<p class="hint" style="margin-bottom:6px">Kira, fatura, abonelik, maaş gibi her ay tekrar edenler. “Otomatik” olanlar günü gelince kendiliğinden eklenir.</p>
-    <div>${S.fixed.length ? [...S.fixed].sort((a, b) => a.day - b.day).map(f => { const c = catById(f.cat); return `<div class="set-i" ${cs(c)}><span class="bub">${ci(c)}</span><div><div class="t">${esc(f.name)}${f.auto ? '<span class="tag-auto">otomatik</span>' : ''}</div><div class="m num">${f.type === 'gelir' ? 'Gelir +' : ''}${money(f.amount)} · ayın ${f.day}. günü</div></div><button class="btn sm" data-editfixed="${f.id}">Düzenle</button></div>`; }).join('') : '<p class="hint">Henüz sabit kalem yok.</p>'}</div>
+    <div>${S.fixed.length ? [...S.fixed].sort((a, b) => a.day - b.day).map(f => { const c = catById(f.cat); return `<div class="set-i" ${cs(c)}><span class="bub">${ci(c)}</span><div><div class="t">${esc(f.name)}${f.auto ? '<span class="tag-auto">otomatik</span>' : ''}</div><div class="m num">${f.type === 'gelir' ? 'Gelir ' + (f.amount > 0 ? '+' : '') : ''}${famt(f)} · ayın ${f.day}. günü</div></div><button class="btn sm" data-editfixed="${f.id}">Düzenle</button></div>`; }).join('') : '<p class="hint">Henüz sabit kalem yok.</p>'}</div>
     <button class="btn sm" data-act="newFixed" style="margin-top:10px">+ Sabit kalem ekle</button>`)}
   ${fold('quick', 'Tek dokunuşla ekle', S.quick.length ? S.quick.length + ' şablon' : '', `<p class="hint" style="margin-bottom:6px">Tutar yazarsan tek dokunuşla eklenir; boş bırakırsan kategori seçili giriş ekranı açılır.</p>
     <div>${S.quick.map(q => { const c = catById(q.cat); return `<div class="set-i" ${cs(c)}><span class="bub">${ci(c)}</span><div><div class="t">${esc(q.name)}</div><div class="m num">${q.amount ? money(q.amount) : 'tutar sorulur'} · ${esc(c.name)}</div></div><button class="btn sm" data-editquick="${q.id}">Düzenle</button></div>`; }).join('')}</div>
@@ -1855,7 +1860,7 @@ let F = null;
 function openSheet(o = {}) {
   const t = o.tx;
   F = t ? {id: t.id, type: t.type, amt: String(t.amount).replace('.', ','), cat: t.cat, date: t.date, method: t.method || 'kart', note: t.note || '', fixedId: t.fixedId, inst: t.inst, catTouched: true, fresh: true, tags: [...(t.tags || [])], card: t.card || ''}
-        : {id: null, type: o.type || 'gider', amt: o.amount ? String(o.amount).replace('.', ',') : '', cat: o.cat || null, date: o.date || defaultDate(), method: o.method || 'kart', note: o.note || '', catTouched: !!o.cat, n: o.inst || 1, tags: [...(o.tags || [])], card: ''};
+        : {id: null, type: o.type || 'gider', amt: o.amount ? String(o.amount).replace('.', ',') : '', cat: o.cat || null, date: o.date || defaultDate(), method: o.method || 'kart', note: o.note || '', fixedId: o.fixedId, catTouched: !!o.cat, n: o.inst || 1, tags: [...(o.tags || [])], card: ''};
   showThumb(null); $('#rcMsg').textContent = ''; $('#txTag').value = '';
   if (t && t.photo) getPhoto(t.id).then(b => { if (b && F && F.id === t.id) showThumb(URL.createObjectURL(b)); });
   $('#txNote').value = F.note; $('#txQuick').checked = false; $('#txQuickL').hidden = !!t;
@@ -1944,7 +1949,7 @@ $('#txForm').addEventListener('submit', e => {
   if (!F.cat) { $('#txErr').textContent = 'Bir kategori seç.'; buzz(30); return; }
   if (amount >= BIG && F.bigOk !== amount) { buzz(30); ask(`${money(amount)} doğru mu?`, BIG_TXT, 'Evet, doğru', () => { F.bigOk = amount; $('#txForm').requestSubmit(); }); return; }
   if ($('#txTag').value.trim()) { addTag($('#txTag').value); $('#txTag').value = ''; }
-  const rec = {type: F.type, cat: F.cat, amount, note: F.note, date: F.date, method: F.method, tags: F.tags.length ? [...F.tags] : undefined,
+  const rec = {type: F.type, cat: F.cat, amount, note: F.note, date: F.date, method: F.method, fixedId: F.fixedId, tags: F.tags.length ? [...F.tags] : undefined,
     card: F.method === 'kart' && F.type === 'gider' && S.cards.length ? (F.card || S.cards[0].id) : undefined};
   let pid = F.id;
   if (F.id) {
@@ -2012,11 +2017,11 @@ function formModal(title, fields, vals, onSave, onDelete) {
 }
 function editFixed(f) {
   formModal(f ? 'Sabit kalemi düzenle' : 'Yeni sabit kalem',
-    [{k: 'name', label: 'Adı', ph: 'örn. Kira, Elektrik, Maaş'}, {k: 'type', label: 'Tür', t: 'type'}, {k: 'amount', label: 'Tutar (₺)', t: 'num', ph: 'Değişkense tahmini tutar'}, {k: 'day', label: 'Ayın kaçında?', t: 'num', ph: '1–31', max: 2}, {k: 'cat', label: 'Kategori', t: 'cat'},
+    [{k: 'name', label: 'Adı', ph: 'örn. Kira, Elektrik, Maaş'}, {k: 'type', label: 'Tür', t: 'type'}, {k: 'amount', label: 'Tutar (₺) · her ay değişiyorsa boş bırak', t: 'num', ph: 'Boşsa ödeyince sorulur'}, {k: 'day', label: 'Ayın kaçında?', t: 'num', ph: '1–31', max: 2}, {k: 'cat', label: 'Kategori', t: 'cat'},
      {k: 'auto', label: 'Günü gelince otomatik eklensin mi?', t: 'sel', opts: [['0', 'Hayır, ben işaretlerim'], ['1', 'Evet, otomatik ekle']]}],
     f ? {...f, auto: f.auto ? '1' : '0'} : {type: 'gider', cat: 'fatura', auto: '0'},
-    v => { if (!v.name) return 'Bir ad yaz.'; if (!(v.amount > 0)) return 'Tutarı gir.'; const day = Math.round(v.day); if (!(day >= 1 && day <= 31)) return 'Gün 1 ile 31 arasında olmalı.';
-      const o = {name: v.name, type: v.type, amount: v.amount, day, cat: v.cat, auto: v.auto === '1'};
+    v => { if (!v.name) return 'Bir ad yaz.'; const amt = v.amount > 0 ? v.amount : 0; const day = Math.round(v.day); if (!(day >= 1 && day <= 31)) return 'Gün 1 ile 31 arasında olmalı.';
+      const o = {name: v.name, type: v.type, amount: amt, day, cat: v.cat, auto: amt > 0 && v.auto === '1'};
       if (f) Object.assign(f, o); else S.fixed.push({id: uid(), ...o}); save(); autoFixed(); render(); },
     f && (() => { const i = S.fixed.indexOf(f); S.fixed = S.fixed.filter(x => x !== f); save(); render(); toast(`${f.name} silindi`, {label: 'Geri al', fn: () => { S.fixed.splice(i, 0, f); save(); render(); }}); }));
 }
@@ -2087,7 +2092,7 @@ document.addEventListener('click', e => {
     else if (act === 'suggestBudgets' || act === 'applySuggest') { const sg = suggestedBudgets(); if (!Object.keys(sg).length) { toast('Öneri için önce birkaç harcama gir.'); return; }
       const old = JSON.parse(JSON.stringify(S.budgets)); S.budgets.cats = sg; S.budgets.total = Object.values(sg).reduce((x, y) => x + y, 0); save(); closeModal(); render();
       toast('Bütçeler son 3 ayın ortalamasına göre ayarlandı', {label: 'Geri al', fn: () => { S.budgets = old; save(); render(); }}); }
-    else if (act === 'payAll') { const paid = new Set(monthTx(cur.y, cur.m).filter(x => x.fixedId).map(x => x.fixedId)); const recs = S.fixed.filter(f => !paid.has(f.id)).map(payFixed); save(); render(); buzz(12); toast(`${recs.length} sabit kalem işlendi`, undoIds(recs.map(r => r.id))); }
+    else if (act === 'payAll') { const paid = new Set(monthTx(cur.y, cur.m).filter(x => x.fixedId).map(x => x.fixedId)); const recs = S.fixed.filter(f => !paid.has(f.id) && f.amount > 0).map(payFixed); save(); render(); buzz(12); toast(`${recs.length} sabit kalem işlendi`, undoIds(recs.map(r => r.id))); }
     else if (act === 'importText') doImport($('#impText').value);
     else if (act === 'csvDl') { download(`kese-${todayStr()}.csv`, csvText(';'), 'text/csv;charset=utf-8'); markBackup(); }
     else if (act === 'csvCopy') { copyOut(csvText('\t'), 'Tablo'); markBackup(); }
@@ -2121,7 +2126,7 @@ document.addEventListener('click', e => {
   }
   let b;
   if ((b = t.closest('[data-quick]'))) { const q = S.quick.find(x => x.id === b.dataset.quick); if (q) addQuick(q); }
-  else if ((b = t.closest('[data-pay]'))) { const f = S.fixed.find(x => x.id === b.dataset.pay); if (f) { const rec = payFixed(f); save(); render(); buzz(12); toast(`${f.name} işlendi`, undoIds([rec.id])); } }
+  else if ((b = t.closest('[data-pay]'))) { const f = S.fixed.find(x => x.id === b.dataset.pay); if (f && !(f.amount > 0)) openSheet({type: f.type || 'gider', cat: f.cat, note: f.name, fixedId: f.id}); else if (f) { const rec = payFixed(f); save(); render(); buzz(12); toast(`${f.name} işlendi`, undoIds([rec.id])); } }
   else if ((b = t.closest('[data-tx]'))) { const x = S.tx.find(y => y.id === b.dataset.tx); if (x) { if (!modal.hidden) closeModal(); openSheet({tx: x}); } }
   else if ((b = t.closest('[data-cat]'))) openCat(b.dataset.cat);
   else if ((b = t.closest('[data-catlist]'))) { closeModal(); listTab = 'gunluk'; listFilter = {q: '', type: 'all', cat: b.dataset.catlist, all: false}; go('hareketler'); }
@@ -2189,7 +2194,7 @@ function notifList() {
     const y = new Date(n.getFullYear(), n.getMonth() + k, 1), mk = mkey(y.getFullYear(), y.getMonth());
     const paid = new Set(S.tx.filter(t => t.fixedId && t.date.slice(0, 7) === mk).map(t => t.fixedId));
     S.fixed.forEach(f => { if (paid.has(f.id)) return; const due = new Date(y.getFullYear(), y.getMonth(), Math.min(f.day, daysIn(y.getFullYear(), y.getMonth())));
-      push(at(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 1), 10), f.type === 'gelir' ? 'Yarın gelir günü' : 'Yarın ödeme günü', `${f.name} · ${money(f.amount)}${f.auto ? ' · kendiliğinden eklenecek' : ''}`); });
+      push(at(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 1), 10), f.type === 'gelir' ? 'Yarın gelir günü' : 'Yarın ödeme günü', `${f.name}${f.amount > 0 ? ' · ' + money(f.amount) : ''}${f.auto && f.amount > 0 ? ' · kendiliğinden eklenecek' : ''}`); });
   }
   S.cards.forEach(c => { const pp = prevPeriod(c), due = dueAfter(pp.end, c.dueDay), amt = cardSpend(c, pp);
     if (amt > 0) push(at(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 2), 10), 'Kart son ödeme günü yaklaşıyor', `${c.name} ekstresi · ${money(amt)} · 2 gün kaldı`); });

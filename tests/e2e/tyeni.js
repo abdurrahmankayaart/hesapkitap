@@ -58,6 +58,20 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await addOn('Eski', async () => { await pg.fill('#txDate', iso(-20)); check('seçilen gün düğmede yazıyor', await pg.getAttribute('#txDateL', 'aria-pressed') === 'true' && !(await pg.textContent('#txDateT')).includes('Başka')); });
   check('geçmiş güne kaydeder', await dOf('Eski') === iso(-20));
 
+  // 1e) tutarı değişen sabit kalem: boş tutarla eklenir, "Ödendi" tutarı sorar, kaydı kaleme bağlar; geçen ayların tutarı görünür
+  await pg.evaluate(() => { const S = JSON.parse(localStorage.getItem('kese.v1')); S.fixed.push({id: 'fxel', name: 'Ev elektrik', type: 'gider', amount: 0, day: 28, cat: 'fatura', auto: false});
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    S.tx.push({id: 'old1', type: 'gider', cat: 'fatura', amount: 790, note: 'Ev elektrik', date: k + '-27', method: 'kart', fixedId: 'fxel', ts: 1}); localStorage.setItem('kese.v1', JSON.stringify(S)); });
+  await pg.reload(); await pg.waitForTimeout(900); await pg.evaluate(() => { document.getElementById('welcome').hidden = true; });
+  await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
+  const fx = await pg.textContent('#view');
+  check('tutarsız kalem "ödeyince sorulur" yazıyor', fx.includes('tutar ödeyince sorulur'));
+  check('geçen ay ödenen tutar görünüyor', fx.includes('₺790'));
+  await pg.click('[data-pay="fxel"]'); await pg.waitForTimeout(400); await tap(['8', '4', '5']); await pg.click('#txSave'); await pg.waitForTimeout(400);
+  check('ödenince tutar soruldu ve kaleme bağlandı', await pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.fixedId === 'fxel' && t.amount === 845 && t.note === 'Ev elektrik')));
+  check('ödenen kalemde Ödendi düğmesi kalmadı', !(await pg.$('[data-pay="fxel"]')));
+  await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
+
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
   await pg.setInputFiles('#qcamFile', path.join(__dirname, 'fixtures', 'earsiv-karekod.png'));
   await pg.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.amount === 1249.5); } catch (e) { return false; } }, null, {timeout: 120000}).then(() => check('karekoddan 1.249,50 okundu', true), () => check('karekoddan 1.249,50 okundu', false));
