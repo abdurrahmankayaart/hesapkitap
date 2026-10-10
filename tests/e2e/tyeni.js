@@ -80,6 +80,8 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.click('[data-pay="fxmu"]'); await pg.waitForTimeout(400); await tap(['1', '5', '0', '0', '0']); await pg.click('#txSave'); await pg.waitForTimeout(400);
   check('Geldi: gelir olarak kaydedildi', await pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.fixedId === 'fxmu' && t.amount === 15000 && t.type === 'gelir')));
   check('gelir kartında toplam yazıyor', (await pg.textContent('#view')).includes('1/1 geldi · bu ay ₺15.000'));
+  await pg.click('[data-pay="fxmu"]'); await pg.waitForTimeout(400); await tap(['5', '0', '0', '0']); await pg.click('#txSave'); await pg.waitForTimeout(400);
+  check('aynı ay ikinci ödeme eklenir ve toplanır', (await pg.textContent('#view')).includes('₺20.000 geldi · 2 ödeme'));
   await pg.locator('#view').screenshot({path: 'yeni-sabit-ayri.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
