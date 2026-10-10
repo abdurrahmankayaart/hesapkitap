@@ -726,7 +726,7 @@ S.goals = S.goals || []; S.fixed = S.fixed || []; S.quick = S.quick || []; S.v =
 S.customCats.forEach((c, i) => { if (!c.color) c.color = PALETTE[i % PALETTE.length]; });
 S.fixed.forEach(f => { f.type = f.type || 'gider'; });
 S.since = S.since || Date.now(); S.autoDone = S.autoDone || {};
-S.cards = S.cards || []; S.debts = S.debts || []; S.assets = S.assets || []; S.rollover = S.rollover || {}; S.dismissed = S.dismissed || {};
+S.notes = S.notes || []; S.cards = S.cards || []; S.debts = S.debts || []; S.assets = S.assets || []; S.rollover = S.rollover || {}; S.dismissed = S.dismissed || {};
 
 /* ================= state ================= */
 const now0 = new Date();
@@ -1227,6 +1227,13 @@ function fixedPageHtml() {
     </section>`;
   }
 
+  {
+    // Notlar: araç alım-satımı gibi büyük işler burada durur; gelir-gider toplamlarına katılmaz.
+    const notes = (S.notes || []).filter(n => n.date.slice(0, 7) === mkey(cur.y, cur.m)).sort((a, b) => a.date.localeCompare(b.date));
+    h += `<section class="card" data-notes><div class="sec-h"><div><h2>Notlar</h2><div class="sub">hesaba katılmaz, yalnızca kayıt</div></div><button class="btn sm" data-act="newNote">+ Not ekle</button></div>
+      ${notes.length ? `<div>${notes.map(n => { const d = parseD(n.date); return `<div class="li" style="--c:#8C7A64"><button class="li-main" data-noteedit="${n.id}" aria-label="Notu düzenle"><span class="bub"><b style="font-size:15px">✎</b></span><span style="min-width:0"><span class="t" style="display:block">${esc(n.text)}</span><span class="m num" style="display:block">${d.getDate()} ${AY[d.getMonth()]} ${GUN[d.getDay()]}</span></span></button>${n.amount > 0 ? `<b class="num" style="color:var(--ink-2)">${money(n.amount)}</b>` : '<span></span>'}</div>`; }).join('')}</div>`
+        : `<p class="hint">Araç alım-satımı, borç anlaşması gibi hatırlamak istediğin ama gelir-gidere yazmak istemediğin şeyleri buraya not et.</p>`}</section>`;
+  }
   if (S.cards.length && isCurMonth()) {
     h += `<section class="card"><div class="sec-h"><h2>Kartlar</h2><button class="linkbtn" data-act="goSettings">Düzenle</button></div><div>${S.cards.map(c => {
       const p = cardPeriod(c), pp = prevPeriod(c), now = cardSpend(c, p), prev = cardSpend(c, pp), due = dueAfter(pp.end, c.dueDay), dd = daysUntil(due);
@@ -1427,6 +1434,13 @@ function assetsHtml() {
     ${['USD', 'EUR', 'GAU', 'CEY'].map(u => `<div class="row num" style="justify-content:space-between;padding-block:6px;border-top:1px solid var(--line)"><span>${UNITS[u].name}${RATES.manual[u] ? ' <span class="pill mute">elle</span>' : ''}</span><b>${rate(u) ? money(Math.round(rate(u) * 100) / 100) : '—'}</b></div>`).join('')}
     <p class="hint" style="margin-top:8px">${ratesFailed && !upd ? 'Kurlar alınamadı. İnternet bağlantını kontrol et ya da kuru elle gir.' : upd ? `Son güncelleme: ${upd.getDate()} ${AYK[upd.getMonth()]} ${pad(upd.getHours())}:${pad(upd.getMinutes())}${ratesFailed ? ' · şu an güncellenemedi' : ''}` : 'Kurlar alınıyor…'} Çeyrek altın, gram fiyatından yaklaşık hesaplanır.</p></section>`;
   return h;
+}
+function editNote(n) {
+  formModal(n ? 'Notu düzenle' : 'Yeni not', [{k: 'text', label: 'Not', ph: 'örn. Eski araç satıldı', max: 80}, {k: 'amount', label: 'Tutar (isteğe bağlı · hesaba katılmaz)', t: 'num', ph: 'örn. 370000'}, {k: 'date', label: 'Tarih', t: 'date'}],
+    n ? {...n, amount: n.amount ? String(n.amount).replace('.', ',') : ''} : {date: defaultDate()},
+    v => { if (!v.text) return 'Notu yaz.'; if (!v.date) return 'Tarihi seç.'; const o = {text: v.text, amount: v.amount > 0 ? v.amount : 0, date: v.date};
+      S.notes = S.notes || []; if (n) Object.assign(n, o); else S.notes.push({id: uid(), ...o}); save(); render(); },
+    n && (() => { const i = S.notes.indexOf(n); S.notes = S.notes.filter(x => x !== n); save(); render(); toast('Not silindi', {label: 'Geri al', fn: () => { S.notes.splice(i, 0, n); save(); render(); }}); }));
 }
 function editAsset(a) {
   formModal(a ? 'Varlığı düzenle' : 'Yeni varlık', [{k: 'unit', label: 'Ne?', t: 'sel', opts: [['USD', 'Dolar'], ['EUR', 'Euro'], ['GAU', 'Gram altın'], ['CEY', 'Çeyrek altın']]}, {k: 'amount', label: 'Miktar', t: 'num', ph: 'örn. 500 ya da 10'}, {k: 'note', label: 'Not (isteğe bağlı)', ph: 'örn. Kasada'}],
@@ -2126,6 +2140,7 @@ document.addEventListener('click', e => {
     else if (act === 'newDebt') editDebt(null);
     else if (act === 'newAsset') editAsset(null);
     else if (act === 'newCard') editCard(null);
+    else if (act === 'newNote') editNote(null);
     else if (act === 'tour') showTour();
     else if (act === 'ratesRefresh') { toast('Kurlar güncelleniyor…'); refreshRates(true).then(() => toast(ratesFailed ? 'Kurlar alınamadı. Elle girebilirsin.' : 'Kurlar güncellendi')); }
     else if (act === 'ratesManual') formModal('Kurları elle gir', [['USD', '1 dolar kaç TL?'], ['EUR', '1 euro kaç TL?'], ['GAU', '1 gram altın kaç TL?'], ['CEY', '1 çeyrek altın kaç TL?']].map(([k, l]) => ({k, label: l + ' (boş = otomatik)', t: 'num'})),
@@ -2154,6 +2169,7 @@ document.addEventListener('click', e => {
   else if ((b = t.closest('[data-dpay]'))) { const d = S.debts.find(x => x.id === b.dataset.dpay); if (d) payDebt(d); }
   else if ((b = t.closest('[data-dedit]'))) editDebt(S.debts.find(x => x.id === b.dataset.dedit));
   else if ((b = t.closest('[data-aedit]'))) editAsset(S.assets.find(x => x.id === b.dataset.aedit));
+  else if ((b = t.closest('[data-noteedit]'))) editNote((S.notes || []).find(x => x.id === b.dataset.noteedit));
   else if ((b = t.closest('[data-editcard]'))) editCard(S.cards.find(x => x.id === b.dataset.editcard));
   else if ((b = t.closest('[data-tagopen]'))) { listTab = 'gunluk'; listFilter = {q: '', type: 'all', cat: '', all: true, tag: b.dataset.tagopen}; go('hareketler'); }
   else if ((b = t.closest('[data-rmode]'))) { rMode = b.dataset.rmode; rYear = null; openReport(); }

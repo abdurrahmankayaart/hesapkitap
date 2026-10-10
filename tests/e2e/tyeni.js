@@ -98,6 +98,16 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.locator('[data-multi="fxdg"]').screenshot({path: 'yeni-dugungram-kart.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
+  // 1i) notlar: tutarlı not eklenir, gelir-gider toplamı değişmez
+  await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
+  const totals = () => pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.length + ':' + t.reduce((a, x) => a + x.amount, 0); });
+  const tb = await totals();
+  await pg.click('[data-act="newNote"]'); await pg.waitForTimeout(300); await pg.fill('#f_text', 'Hyundai i20 satıldı'); await pg.fill('#f_amount', '370000'); await pg.click('#modal .save'); await pg.waitForTimeout(400);
+  const nc = await pg.textContent('[data-notes]');
+  check('not eklendi, tutarıyla görünüyor', nc.includes('Hyundai i20 satıldı') && nc.includes('₺370.000'));
+  check('not gelir-gidere katılmadı', await totals() === tb && await pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1')).notes.length === 1));
+  await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
+
   // 1g) iki sekme: diğer sekmede eklenen kayıt bu sekmeye gelir, sonraki kayıt onu silmez
   const pg2 = await ctx.newPage(); await pg2.goto(pg.url()); await pg2.waitForTimeout(900); await pg2.evaluate(() => { document.getElementById('welcome').hidden = true; });
   await add(pg2, 'ikincisekme 77'); await pg.waitForTimeout(400); await add(pg, 'birincisekme 33');
