@@ -37,7 +37,7 @@
   --accent:#212C46; --on-accent:#FBF8F3; --accent-soft:#E4E1DA; --ring:#A66540;
   --teak:#A66540; --on-teak:#FFFFFF; --canvas:#D4C4B0;
   --in:#606A5F; --out:#932C2E; --save:#A66540;
-  --good:#4E594D; --good-soft:#E1E4DC; --warn:#8A4F2E; --warn-soft:#F1E1D2; --bad:#932C2E; --bad-soft:#F3DEDA;
+  --paid:#2F7D55; --good:#4E594D; --good-soft:#E1E4DC; --warn:#8A4F2E; --warn-soft:#F1E1D2; --bad:#932C2E; --bad-soft:#F3DEDA;
   --grid:#E6DCCF; --axis:#C9BCAB; --shadow:0 1px 2px rgba(33,44,70,.06),0 8px 22px rgba(33,44,70,.07); --scrim:rgba(20,26,41,.45);
   --tint:13%; --tint-2:24%;
   --display:"Bricolage Grotesque",ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif;
@@ -50,7 +50,7 @@
     --accent:#D9956A; --on-accent:#212C46; --accent-soft:#3D2F2A; --ring:#D9956A;
     --teak:#C27A4E; --on-teak:#FFFFFF; --canvas:#D4C4B0;
     --in:#9CAA99; --out:#D9605F; --save:#D9956A;
-    --good:#A9B8A5; --good-soft:#26302A; --warn:#D9956A; --warn-soft:#3A2B22; --bad:#E07372; --bad-soft:#3A1E22;
+    --paid:#3C9468; --good:#A9B8A5; --good-soft:#26302A; --warn:#D9956A; --warn-soft:#3A2B22; --bad:#E07372; --bad-soft:#3A1E22;
     --grid:#1E273B; --axis:#33405F; --shadow:0 1px 2px rgba(0,0,0,.6); --scrim:rgba(0,0,0,.7);
     --tint:18%; --tint-2:30%;
     color-scheme:dark;
@@ -61,7 +61,7 @@
   --accent:#D9956A; --on-accent:#212C46; --accent-soft:#3D2F2A; --ring:#D9956A;
   --teak:#C27A4E; --on-teak:#FFFFFF; --canvas:#D4C4B0;
   --in:#9CAA99; --out:#D9605F; --save:#D9956A;
-  --good:#A9B8A5; --good-soft:#26302A; --warn:#D9956A; --warn-soft:#3A2B22; --bad:#E07372; --bad-soft:#3A1E22;
+  --paid:#3C9468; --good:#A9B8A5; --good-soft:#26302A; --warn:#D9956A; --warn-soft:#3A2B22; --bad:#E07372; --bad-soft:#3A1E22;
   --grid:#1E273B; --axis:#33405F; --shadow:0 1px 2px rgba(0,0,0,.6); --scrim:rgba(0,0,0,.7);
   --tint:18%; --tint-2:30%;
   color-scheme:dark;
@@ -184,6 +184,7 @@ h3{font-size:16px;font-weight:700}
 .li .t{font-weight:700;font-size:14.5px}
 .li .m{font-size:12.5px;color:var(--muted)}
 .li.done .t{color:var(--muted)}
+.btn.paid{background:var(--paid);border-color:transparent;color:#fff}
 .li-main{grid-column:1/3;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;border:0;background:none;padding:0;text-align:left;min-width:0;border-radius:12px}
 .check{color:var(--good);font-weight:700;font-size:13px}
 
@@ -296,7 +297,10 @@ textarea.inp{min-height:110px;font-family:ui-monospace,SFMono-Regular,Menlo,mono
 .scrim{position:absolute;inset:0;background:var(--scrim);animation:fade .2s}
 @keyframes fade{from{opacity:0}}
 .panel{position:relative;width:100%;max-width:560px;max-height:94%;overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border-radius:28px 28px 0 0;padding:0 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;animation:up .3s cubic-bezier(.2,.9,.25,1)}
-@keyframes up{from{transform:translateY(100%)}}
+/* Flex column içindeki çocuklar küçülmesin — yoksa uzun listeli modal'da (ör. kategori kayıtları)
+   içerik kırpılır ve panel hiç taşmadığı için kaydırılamaz. flex-shrink:0 ile içerik doğal boyunda
+   kalır, panel taşar ve düzgün scroll olur. */
+.panel>*{flex-shrink:0}
 .grabzone{position:sticky;top:0;z-index:2;background:var(--surface);padding:10px 0 4px;touch-action:none;cursor:grab;display:flex;flex-direction:column;gap:10px}
 .grab{width:42px;height:5px;border-radius:9px;background:var(--line);align-self:center}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -1202,9 +1206,9 @@ function fixedPageHtml() {
     const fx = [...S.fixed].sort((a, b) => a.day - b.day), unpaid = fx.filter(f => !paidIds.has(f.id));
     const waiting = unpaid.filter(f => f.type !== 'gelir').reduce((a, f) => a + f.amount, 0);
     h += `<section class="card"><div class="sec-h"><div><h2>Sabit kalemler</h2>${fx.length ? `<div class="sub num">${fx.length - unpaid.length}/${fx.length} işlendi · düzenlemek için dokun</div>` : ''}</div><button class="btn sm" data-act="newFixed">+ Ekle</button></div>
-      ${fx.length ? `<div>${fx.map(f => { const c = catById(f.cat), paid = paidIds.has(f.id), due = isCurMonth() && !paid && f.day < now0.getDate() && new Date(cur.y, cur.m, f.day, 23).getTime() > (S.since || 0), inc = f.type === 'gelir';
-        return `<div class="li ${paid ? 'done' : ''}" ${cs(c)}><button class="li-main" data-editfixed="${f.id}" aria-label="${esc(f.name)} düzenle"><span class="bub">${ci(c)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(f.name)}${f.auto ? '<span class="tag-auto">otomatik</span>' : ''}</span><span class="m num" style="display:block">Ayın ${f.day}. günü · ${inc && f.amount > 0 ? '+' : ''}${famt(f)}${due ? ' · <span class="pill warn">günü geçti</span>' : ''}</span>${(h => h ? `<span class="m num" style="display:block">${h}</span>` : '')(fhist(f, mkey(cur.y, cur.m)))}</span></button>
-        ${paid ? `<span class="check">✓ ${inc ? 'Geldi' : 'Ödendi'}</span>` : `<button class="btn sm" data-pay="${f.id}">${inc ? 'Geldi' : 'Ödendi'}</button>`}</div>`; }).join('')}</div>
+      ${fx.length ? `<div>${fx.map(f => { const c = catById(f.cat), paid = paidIds.has(f.id), ptx = paid && txs.find(t => t.fixedId === f.id), due = isCurMonth() && !paid && f.day < now0.getDate() && new Date(cur.y, cur.m, f.day, 23).getTime() > (S.since || 0), inc = f.type === 'gelir';
+        return `<div class="li ${paid ? 'done' : ''}" ${cs(c)}><button class="li-main" data-editfixed="${f.id}" aria-label="${esc(f.name)} düzenle"><span class="bub">${ci(c)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(f.name)}${f.auto ? '<span class="tag-auto">otomatik</span>' : ''}</span><span class="m num" style="display:block">Ayın ${f.day}. günü · ${paid ? `<b style="color:var(--paid)">${money(ptx.amount)} ${inc ? 'geldi' : 'ödendi'}</b>` : (inc && f.amount > 0 ? '+' : '') + famt(f)}${due ? ' · <span class="pill warn">günü geçti</span>' : ''}</span>${(h => h ? `<span class="m num" style="display:block">${h}</span>` : '')(fhist(f, mkey(cur.y, cur.m)))}</span></button>
+        ${paid ? `<button class="btn sm paid" data-tx="${ptx.id}" aria-label="${esc(f.name)}: ${inc ? 'geldi' : 'ödendi'}, ${money(ptx.amount)}. Düzeltmek için dokun">✓ ${inc ? 'Geldi' : 'Ödendi'}</button>` : `<button class="btn sm" data-pay="${f.id}">${inc ? 'Geldi' : 'Ödendi'}</button>`}</div>`; }).join('')}</div>
       ${unpaid.length > 1 ? `<div class="row" style="margin-top:10px;justify-content:space-between"><span class="hint num">${waiting ? money(waiting) + ' ödeme bekliyor' : ''}</span><button class="btn sm" data-act="payAll">Hepsini işle</button></div>` : ''}
       ${!S.fixed.some(f => f.auto) ? `<p class="hint" style="margin-top:10px">Bir kaleme dokunup “otomatik ekle”yi açarsan günü gelince kendiliğinden işlenir.</p>` : ''}`
       : `<p class="hint">Kira, faturalar, abonelikler ve maaş gibi her ay tekrar edenleri ekle; ay içinde tek dokunuşla işlersin.</p>`}

@@ -70,6 +70,8 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.click('[data-pay="fxel"]'); await pg.waitForTimeout(400); await tap(['8', '4', '5']); await pg.click('#txSave'); await pg.waitForTimeout(400);
   check('ödenince tutar soruldu ve kaleme bağlandı', await pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.fixedId === 'fxel' && t.amount === 845 && t.note === 'Ev elektrik')));
   check('ödenen kalemde Ödendi düğmesi kalmadı', !(await pg.$('[data-pay="fxel"]')));
+  check('ödenen kalemin düğmesi yeşil ve tutarı yazıyor', await pg.evaluate(() => { const b = document.querySelector('.btn.paid'); return !!b && /✓ Ödendi/.test(b.textContent) && getComputedStyle(b).backgroundColor === 'rgb(47, 125, 85)' && b.closest('.li').textContent.includes('₺845 ödendi'); }));
+  await pg.locator('.card:has(.btn.paid)').first().screenshot({path: 'yeni-odendi-yesil.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
