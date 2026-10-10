@@ -72,6 +72,15 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   check('ödenen kalemde Ödendi düğmesi kalmadı', !(await pg.$('[data-pay="fxel"]')));
   check('ödenen kalemin düğmesi yeşil ve tutarı yazıyor', await pg.evaluate(() => { const b = document.querySelector('.btn.paid'); return !!b && /✓ Ödendi/.test(b.textContent) && getComputedStyle(b).backgroundColor === 'rgb(47, 125, 85)' && b.closest('.li').textContent.includes('₺845 ödendi'); }));
   await pg.locator('.card:has(.btn.paid)').first().screenshot({path: 'yeni-odendi-yesil.png'});
+  // 1f) düzenli gelir ayrı kartta; "Geldi" tutarı sorar, gelir olarak kaydeder
+  await pg.evaluate(() => { const S = JSON.parse(localStorage.getItem('kese.v1')); S.fixed.push({id: 'fxmu', name: 'Makro Stüdyo', type: 'gelir', amount: 0, day: 28, cat: 'ek', auto: false}); localStorage.setItem('kese.v1', JSON.stringify(S)); });
+  await pg.reload(); await pg.waitForTimeout(900); await pg.evaluate(() => { document.getElementById('welcome').hidden = true; });
+  await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
+  check('gelir ve gider ayrı kartlarda', await pg.evaluate(() => { const hs = [...document.querySelectorAll('#view h2')].map(h => h.textContent); const inc = [...document.querySelectorAll('#view .card')].find(c => c.querySelector('h2') && c.querySelector('h2').textContent === 'Düzenli gelirler'); return hs.includes('Sabit giderler') && !!inc && inc.textContent.includes('Makro Stüdyo') && !inc.textContent.includes('Ev elektrik'); }));
+  await pg.click('[data-pay="fxmu"]'); await pg.waitForTimeout(400); await tap(['1', '5', '0', '0', '0']); await pg.click('#txSave'); await pg.waitForTimeout(400);
+  check('Geldi: gelir olarak kaydedildi', await pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.fixedId === 'fxmu' && t.amount === 15000 && t.type === 'gelir')));
+  check('gelir kartında toplam yazıyor', (await pg.textContent('#view')).includes('1/1 geldi · bu ay ₺15.000'));
+  await pg.locator('#view').screenshot({path: 'yeni-sabit-ayri.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
