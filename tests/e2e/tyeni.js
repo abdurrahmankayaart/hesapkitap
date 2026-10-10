@@ -85,6 +85,12 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.locator('#view').screenshot({path: 'yeni-sabit-ayri.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
+  // 1g) iki sekme: diğer sekmede eklenen kayıt bu sekmeye gelir, sonraki kayıt onu silmez
+  const pg2 = await ctx.newPage(); await pg2.goto(pg.url()); await pg2.waitForTimeout(900); await pg2.evaluate(() => { document.getElementById('welcome').hidden = true; });
+  await add(pg2, 'ikincisekme 77'); await pg.waitForTimeout(400); await add(pg, 'birincisekme 33');
+  check('iki sekme birbirinin kaydını silmiyor', await pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.some(x => x.amount === 77) && t.some(x => x.amount === 33); }));
+  await pg2.close();
+
   // 2) karekod: e-Arşiv karekodlu fotoğraftan tutar okunur (OCR bir şey bulamasa da)
   await pg.setInputFiles('#qcamFile', path.join(__dirname, 'fixtures', 'earsiv-karekod.png'));
   await pg.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('kese.v1')).tx.some(t => t.amount === 1249.5); } catch (e) { return false; } }, null, {timeout: 120000}).then(() => check('karekoddan 1.249,50 okundu', true), () => check('karekoddan 1.249,50 okundu', false));

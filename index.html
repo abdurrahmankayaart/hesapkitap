@@ -2190,6 +2190,8 @@ function toast(msg, action) {
   if (action) el.querySelector('button').onclick = () => { action.fn(); el.hidden = true; buzz(8); };
   toastT = setTimeout(() => { el.hidden = true; }, action ? 5000 : 3000);
 }
+// Aynı veri başka bir sekmede değişirse onu al; yoksa bu sekme eski haliyle üstüne yazar ve kayıt kaybolur.
+window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const d = JSON.parse(e.newValue); if (!Array.isArray(d.tx)) return; S = Object.assign(blank(), d); S.goals = S.goals || []; render(); } catch (x) {} });
 window.addEventListener('kese-updated', () => toast('Hesap Kitap güncellendi', {label: 'Yenile', fn: () => location.reload()}));
 
 let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (view === 'ozet') render(); }, 150); });
