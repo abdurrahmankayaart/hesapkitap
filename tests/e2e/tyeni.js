@@ -85,6 +85,19 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.locator('#view').screenshot({path: 'yeni-sabit-ayri.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
+  // 1h) "birçok kayıt" kalemi: ayrı kart, isim + tarih + tutar, ay toplamı
+  await pg.evaluate(() => { const S = JSON.parse(localStorage.getItem('kese.v1')); S.fixed.push({id: 'fxdg', name: 'Düğün Gram', type: 'gelir', amount: 0, day: 28, cat: 'ek', auto: false, multi: true}); localStorage.setItem('kese.v1', JSON.stringify(S)); });
+  await pg.reload(); await pg.waitForTimeout(900); await pg.evaluate(() => { document.getElementById('welcome').hidden = true; });
+  await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
+  const shoot = async (name, digits) => { await pg.click('[data-multi="fxdg"] [data-pay="fxdg"]'); await pg.waitForTimeout(400); await pg.fill('#txNote', name); await tap(digits); await pg.click('#txSave'); await pg.waitForTimeout(400); };
+  await shoot('Ayşe & Mehmet', ['2', '5', '0', '0', '0']); await shoot('Elif & Can', ['3', '0', '0', '0', '0']);
+  const mc = await pg.textContent('[data-multi="fxdg"]');
+  check('çekimler ayrı kartta isimle listeleniyor', mc.includes('Ayşe & Mehmet') && mc.includes('Elif & Can') && mc.includes('2 kayıt') && mc.includes('₺55.000'));
+  check('çekim kartı düzenli gelirler listesine karışmıyor', await pg.evaluate(() => { const inc = [...document.querySelectorAll('#view .card')].find(c => c.querySelector('h2') && c.querySelector('h2').textContent === 'Düzenli gelirler'); return !!inc && !inc.textContent.includes('Düğün Gram'); }));
+  check('taşma yok (sabit)', await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0);
+  await pg.locator('[data-multi="fxdg"]').screenshot({path: 'yeni-dugungram-kart.png'});
+  await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
+
   // 1g) iki sekme: diğer sekmede eklenen kayıt bu sekmeye gelir, sonraki kayıt onu silmez
   const pg2 = await ctx.newPage(); await pg2.goto(pg.url()); await pg2.waitForTimeout(900); await pg2.evaluate(() => { document.getElementById('welcome').hidden = true; });
   await add(pg2, 'ikincisekme 77'); await pg.waitForTimeout(400); await add(pg, 'birincisekme 33');
