@@ -55,7 +55,7 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   const iso = k => { const d = new Date(Date.now() + k * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const addOn = async (note, pick) => { await pg.click('#fab'); await pg.waitForTimeout(400); await tap(['5', '0']); await pg.click('[data-c="market"]'); await pg.fill('#txNote', note); await pick(); await pg.click('#txSave'); await pg.waitForTimeout(400); };
   await addOn('Yarınki', () => pg.click('#sheet [data-d="1"]')); check('Yarın düğmesi ileri tarihe kaydeder', await dOf('Yarınki') === iso(1));
-  await addOn('Eski', async () => { await pg.fill('#txDate', iso(-20)); check('seçilen gün düğmede yazıyor', await pg.getAttribute('#txDateL', 'aria-pressed') === 'true' && !(await pg.textContent('#txDateT')).includes('Başka')); });
+  await addOn('Eski', async () => { await pg.fill('#txDate', iso(-20)); check('tarih kutusu görünür, seçilen gün yanında yazıyor', await pg.isVisible('#txDate') && await pg.getAttribute('#txDateL', 'aria-pressed') === 'true' && /\d+ \S+ \S+/.test(await pg.textContent('#txDateT'))); await pg.locator('.opts').first().screenshot({path: 'yeni-tarih-kutusu.png'}); });
   check('geçmiş güne kaydeder', await dOf('Eski') === iso(-20));
 
   // 1e) tutarı değişen sabit kalem: boş tutarla eklenir, "Ödendi" tutarı sorar, kaydı kaleme bağlar; geçen ayların tutarı görünür
