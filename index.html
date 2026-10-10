@@ -1256,7 +1256,8 @@ function fixedPageHtml() {
 function renderList(el) {
   if (listTab === 'sabit') { el.innerHTML = ltabs() + fixedPageHtml(); return; }
   if (listTab === 'takvim') { el.innerHTML = ltabs() + calHtml(); return; }
-  const txs = (listFilter.all ? S.tx : monthTx(cur.y, cur.m)).filter(t => !t.fixedId && !t.inst), used = [...new Set(txs.map(t => t.cat))], q = trLow(listFilter.q);
+  // Sabit ödemeler ve taksitler Sabit sekmesinde durur; gelirler ise kaynağı ne olursa olsun burada da görünür.
+  const txs = (listFilter.all ? S.tx : monthTx(cur.y, cur.m)).filter(t => t.type === 'gelir' || (!t.fixedId && !t.inst)), used = [...new Set(txs.map(t => t.cat))], q = trLow(listFilter.q);
   const tagsHere = [...new Set(txs.flatMap(t => t.tags || []))].sort();
   const f = txs.filter(t => (listFilter.type === 'all' || t.type === listFilter.type) && (!listFilter.cat || t.cat === listFilter.cat) && (!listFilter.tag || (t.tags || []).includes(listFilter.tag)) &&
     (!q || trLow(t.note).includes(q) || trLow(catById(t.cat).name).includes(q))).sort((a, b) => b.date.localeCompare(a.date) || (b.ts || 0) - (a.ts || 0));
@@ -1271,7 +1272,7 @@ function renderList(el) {
   if (!days.length) h += `<div class="card empty">${txs.length ? 'Aramana uyan kayıt yok.' : 'Bu ay için günlük harcama yok. Kira, fatura ve taksitler “Sabit harcamalar” sekmesinde.'}</div>`;
   days.forEach(d => {
     const dt = parseD(d), g = groups[d], dayE = sum(g, 'gider');
-    h += `<div><div class="day-h"><span>${dt.getDate()} ${AY[dt.getMonth()]}${dt.getFullYear() !== now0.getFullYear() ? ' ' + dt.getFullYear() : ''} · ${GUN[dt.getDay()]}</span><span class="num">${dayE ? '−' + money(dayE) : ''}</span></div><div class="txg">`;
+    h += `<div><div class="day-h"><span>${dt.getDate()} ${AY[dt.getMonth()]}${dt.getFullYear() !== now0.getFullYear() ? ' ' + dt.getFullYear() : ''} · ${GUN[dt.getDay()]}</span><span class="num">${[dayE ? '−' + money(dayE) : '', sum(g, 'gelir') ? '+' + money(sum(g, 'gelir')) : ''].filter(Boolean).join(' · ')}</span></div><div class="txg">`;
     g.forEach(t => { h += txRow(t); });
     h += `</div></div>`;
   });

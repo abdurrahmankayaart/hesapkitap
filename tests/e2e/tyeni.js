@@ -98,6 +98,14 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.locator('[data-multi="fxdg"]').screenshot({path: 'yeni-dugungram-kart.png'});
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
+  // 1j) Günlük → Gelirler: sabit kaleme bağlı gelirler de listelenir
+  await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="gunluk"]'); await pg.waitForTimeout(300); await pg.click('[data-ft="gelir"]'); await pg.waitForTimeout(300);
+  const gl = await pg.textContent('#view');
+  check('Gelirler filtresi müşteri ve çekim gelirlerini gösteriyor', gl.includes('Ayşe & Mehmet') && gl.includes('Elif & Can') && gl.includes('Makro Stüdyo'));
+  await pg.click('[data-ft="gider"]'); await pg.waitForTimeout(300);
+  check('Giderler filtresinde sabit ödeme yok', !(await pg.textContent('#view')).includes('Ev elektrik'));
+  await pg.click('[data-ft="all"]'); await pg.waitForTimeout(200);
+
   // 1i) notlar: tutarlı not eklenir, gelir-gider toplamı değişmez
   await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
   const totals = () => pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.length + ':' + t.reduce((a, x) => a + x.amount, 0); });
