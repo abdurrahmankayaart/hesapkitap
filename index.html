@@ -1614,8 +1614,8 @@ function renderSettings(el) {
     ${SY.code ? `<p class="hint" style="margin-bottom:10px">Kayıtların bağlı bütün cihazlarda aynı görünür. ${syncErr ? esc(syncErr) : SY.last ? `Son eşitleme: ${(m => m < 1 ? 'az önce' : m < 60 ? m + ' dakika önce' : Math.floor(m / 60) + ' saat önce')(Math.floor((Date.now() - SY.last) / 60000))}.` : ''}</p>
       <p class="hint" style="margin-bottom:6px"><b>Eşitleme kodun</b> (başka cihazı bağlamak için; şifre gibi sakla):</p>
       <div class="inp num" id="syncCode" style="font-weight:700;letter-spacing:.04em;user-select:all;-webkit-user-select:all">${esc(SY.code)}</div>
-      <div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="syncLink">Bağlantıyı kopyala</button><button class="btn sm" data-act="syncNow">Şimdi eşitle</button><button class="btn sm danger" data-act="syncOff">Bu cihazda kapat</button></div>
-      <p class="hint" style="margin-top:10px">Telefonu bağlamak için: bağlantıyı kopyala, kendine gönder, telefonda aç. Fiş fotoğrafları eşitlenmez.</p>`
+      <div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="syncQr">Telefonu bağla (karekod)</button><button class="btn sm" data-act="syncLink">Bağlantıyı kopyala</button><button class="btn sm" data-act="syncNow">Şimdi eşitle</button><button class="btn sm danger" data-act="syncOff">Bu cihazda kapat</button></div>
+      <p class="hint" style="margin-top:10px">Her cihaz bir kez bağlanır: karekodu telefonla okut ya da bağlantıyı kendine gönderip telefonda aç. Fiş fotoğrafları eşitlenmez.</p>`
     : `<p class="hint" style="margin-bottom:10px">Telefonda girdiğin kaydı bilgisayarda da gör. Açarsan kayıtların, yalnızca senin bildiğin bir kodla, bu sitenin sunucusunda saklanır.</p>
       <div class="row"><button class="btn sm primary" data-act="syncOn">Eşitlemeyi aç</button><button class="btn sm" data-act="syncHave">Kodum var, bu cihazı bağla</button></div>`}</section>
   <section class="card"><div class="sec-h"><h2>Yedek</h2></div>
@@ -2166,6 +2166,7 @@ document.addEventListener('click', e => {
     else if (act === 'syncHave') formModal('Bu cihazı bağla', [{k: 'code', label: 'Eşitleme kodu', ph: 'xxxxx-xxxxx-xxxxx-xxxxx', max: 40}], {}, v => { if (!v.code) return 'Kodu yaz.'; setTimeout(() => syncJoin(v.code), 50); });
     else if (act === 'syncNow') { toast('Eşitleniyor…'); syncNow().then(() => toast(syncErr || 'Eşitlendi')); }
     else if (act === 'syncLink') copyOut(syncLink(), 'Bağlantı');
+    else if (act === 'syncQr') syncQr();
     else if (act === 'syncOff') syncOff();
     else if (act === 'tour') showTour();
     else if (act === 'ratesRefresh') { toast('Kurlar güncelleniyor…'); refreshRates(true).then(() => toast(ratesFailed ? 'Kurlar alınamadı. Elle girebilirsin.' : 'Kurlar güncellendi')); }
@@ -2349,6 +2350,16 @@ async function syncStart(code, adopt) {
 }
 function syncOff() { ask('Bu cihazda eşitleme kapatılsın mı?', 'Kayıtların bu cihazda ve sunucuda kalır; yalnızca bu cihaz artık güncellenmez. Aynı kodla yeniden bağlayabilirsin.', 'Kapat', () => { SY = {}; saveSync(); render(); toast('Eşitleme bu cihazda kapatıldı'); }); }
 const syncLink = () => `${NEW_URL}#bagla=${SY.code}`;
+/* Telefonu bağlamanın en kolay yolu: bilgisayarda karekodu göster, telefonun kamerasıyla okut. Karekod cihazda üretilir. */
+let qrP = null;
+function loadQr() { return qrP || (qrP = new Promise((res, rej) => { if (window.qrcode) return res(window.qrcode); const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'; sc.onload = () => window.qrcode ? res(window.qrcode) : rej(new Error('qr')); sc.onerror = () => { qrP = null; rej(new Error('qr')); }; document.head.appendChild(sc); })); }
+async function syncQr() {
+  try { const Q = await loadQr(), q = Q(0, 'M'); q.addData(syncLink()); q.make();
+    openModal(`${grabHtml('Telefonu bağla')}<p class="hint" style="font-size:14.5px;color:var(--ink-2)">Telefonunun kamerasını aç, karekoda tut, çıkan bağlantıya dokun. Açılan sayfada <b>Bağla</b>’ya bas.</p>
+      <div id="syncQr" style="background:#fff;border-radius:18px;padding:14px;margin:14px auto;max-width:280px">${q.createSvgTag({cellSize: 6, margin: 2, scalable: true})}</div>
+      <p class="hint">Bu karekod şifre gibidir; yalnızca kendi telefonuna ve güvendiğin kişiye göster.</p><button type="button" class="btn" data-mclose>Kapat</button>`);
+  } catch (e) { toast('Karekod hazırlanamadı (internet gerekir). “Bağlantıyı kopyala”yı kullan.'); }
+}
 const hasData = () => !S.sample && (S.tx.length || S.fixed.length || (S.notes || []).length);
 function syncJoin(code) {
   const go = () => syncStart(code, !hasData());
