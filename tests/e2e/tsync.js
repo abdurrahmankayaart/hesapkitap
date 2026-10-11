@@ -30,7 +30,7 @@ const startServer = () => new Promise(res => { const p = spawn(process.execPath,
   const qrText = await A.pg.evaluate(async () => { const svg = document.querySelector('#syncQr svg'), img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg)); await img.decode();
     const c = document.createElement('canvas'); c.width = c.height = 600; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 600, 600); x.drawImage(img, 0, 0, 600, 600); const r = jsQR(x.getImageData(0, 0, 600, 600).data, 600, 600); return r && r.data; });
   check('karekod bağlama bağlantısını içeriyor', qrText === 'https://abdurrahmankaya.com/takip/#bagla=' + code);
-  await A.pg.click('#modal [data-mclose]'); await A.pg.waitForTimeout(200);
+  await A.pg.keyboard.press('Escape'); await A.pg.waitForSelector('#modal', {state: 'hidden', timeout: 5000});
   await A.pg.click('#gear'); await A.pg.waitForTimeout(300);
 
   // B: boş cihaz, bağlantıyla bağlanır → A'nın kayıtlarını alır
