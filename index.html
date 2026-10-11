@@ -716,7 +716,18 @@ const KEY = keyFor(ME);
 const FRESH = (() => { try { return !localStorage.getItem(KEY); } catch (e) { return true; } })();
 let S;
 function load() { try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* keep in memory */ } try { planNotifs(); } catch (e) { /* açılışta henüz hazır değil */ } }
+function localSave() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* keep in memory */ } try { planNotifs(); } catch (e) { /* açılışta henüz hazır değil */ } }
+/* Eşitleme için: hangi kayıtların silindiğini bilmek gerekir, yoksa diğer cihaz silineni geri getirir. */
+const COLS = ['tx', 'fixed', 'quick', 'customCats', 'goals', 'cards', 'debts', 'assets', 'notes'];
+let knownIds = null;
+const allIds = () => { const ids = new Set(); COLS.forEach(c => (S[c] || []).forEach(x => { if (x && x.id) ids.add(x.id); })); return ids; };
+function trackDeletes() {
+  const now = allIds(), t = Date.now(); S.del = S.del || {}; S.rev = S.rev || {};
+  if (knownIds) knownIds.forEach(id => { if (!now.has(id)) S.del[id] = t; });
+  now.forEach(id => { if (S.del[id]) { delete S.del[id]; S.rev[id] = t; } }); // silme geri alındı
+  knownIds = now;
+}
+function save() { trackDeletes(); S.mt = Date.now(); localSave(); try { syncTouch(); } catch (e) { /* açılışta henüz hazır değil */ } }
 function loadUi() { try { return JSON.parse(localStorage.getItem(KEY + '.ui')) || {}; } catch (e) { return {}; } }
 function saveUi() { try { localStorage.setItem(KEY + '.ui', JSON.stringify({view, theme})); } catch (e) {} }
 S = load();
@@ -726,6 +737,7 @@ S.goals = S.goals || []; S.fixed = S.fixed || []; S.quick = S.quick || []; S.v =
 S.customCats.forEach((c, i) => { if (!c.color) c.color = PALETTE[i % PALETTE.length]; });
 S.fixed.forEach(f => { f.type = f.type || 'gider'; });
 S.since = S.since || Date.now(); S.autoDone = S.autoDone || {};
+knownIds = allIds();
 S.notes = S.notes || []; S.cards = S.cards || []; S.debts = S.debts || []; S.assets = S.assets || []; S.rollover = S.rollover || {}; S.dismissed = S.dismissed || {};
 
 /* ================= state ================= */
@@ -1598,6 +1610,14 @@ function renderSettings(el) {
     <textarea class="inp" id="impText" placeholder="03.09.2026	Migros	1.250,50	Market&#10;05.09.2026	Elektrik faturası	845	Faturalar"></textarea>
     <div class="row" style="margin-top:10px"><button class="btn primary sm" data-act="importText">Satırları aktar</button><label class="btn sm">CSV dosyası seç<input type="file" id="impFile" accept=".csv,.tsv,.txt,text/csv" hidden></label></div>
     <div class="hint" id="impMsg" style="margin-top:8px"></div></section>
+  <section class="card" data-sync><div class="sec-h"><h2>Cihazlar arası eşitleme</h2>${SY.code ? `<span class="pill ${syncErr ? 'warn' : 'good'}">${syncErr ? 'Bekliyor' : 'Açık'}</span>` : ''}</div>
+    ${SY.code ? `<p class="hint" style="margin-bottom:10px">Kayıtların bağlı bütün cihazlarda aynı görünür. ${syncErr ? esc(syncErr) : SY.last ? `Son eşitleme: ${(m => m < 1 ? 'az önce' : m < 60 ? m + ' dakika önce' : Math.floor(m / 60) + ' saat önce')(Math.floor((Date.now() - SY.last) / 60000))}.` : ''}</p>
+      <p class="hint" style="margin-bottom:6px"><b>Eşitleme kodun</b> (başka cihazı bağlamak için; şifre gibi sakla):</p>
+      <div class="inp num" id="syncCode" style="font-weight:700;letter-spacing:.04em;user-select:all;-webkit-user-select:all">${esc(SY.code)}</div>
+      <div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="syncLink">Bağlantıyı kopyala</button><button class="btn sm" data-act="syncNow">Şimdi eşitle</button><button class="btn sm danger" data-act="syncOff">Bu cihazda kapat</button></div>
+      <p class="hint" style="margin-top:10px">Telefonu bağlamak için: bağlantıyı kopyala, kendine gönder, telefonda aç. Fiş fotoğrafları eşitlenmez.</p>`
+    : `<p class="hint" style="margin-bottom:10px">Telefonda girdiğin kaydı bilgisayarda da gör. Açarsan kayıtların, yalnızca senin bildiğin bir kodla, bu sitenin sunucusunda saklanır.</p>
+      <div class="row"><button class="btn sm primary" data-act="syncOn">Eşitlemeyi aç</button><button class="btn sm" data-act="syncHave">Kodum var, bu cihazı bağla</button></div>`}</section>
   <section class="card"><div class="sec-h"><h2>Yedek</h2></div>
     <p class="hint" style="margin-bottom:10px">Kayıtlar yalnızca bu cihazda durur. Ayda bir yedek al; telefon değiştirirken yedeği yeni telefonda geri yükle. <b>${S.lastBackup ? `Son yedek: ${(n => n <= 0 ? 'bugün' : n === 1 ? 'dün' : n + ' gün önce')(-daysUntil(new Date(S.lastBackup)))} (${new Date(S.lastBackup).getDate()} ${AY[new Date(S.lastBackup).getMonth()]} ${new Date(S.lastBackup).getFullYear()})` : 'Henüz yedek alınmadı.'}</b></p>
     ${CAN_SHARE ? `<div class="row" style="margin-bottom:8px"><button class="btn sm primary" data-act="jsonShare">Drive / iCloud'a gönder</button></div><p class="hint" style="margin-bottom:10px">Açılan paylaşım ekranında Google Drive'ı ya da “Dosyalara Kaydet”i (iCloud) seç; yedek telefonun dışında da dursun.</p>` : ''}
@@ -1618,7 +1638,7 @@ function renderSettings(el) {
   <section class="card"><div class="sec-h"><h2>Sıfırla</h2></div><div class="row">
     ${S.sample ? '<button class="btn sm" data-act="clearSample">Örnek verileri sil</button>' : '<button class="btn sm" data-act="loadSample">Örnek verileri yükle</button>'}
     <button class="btn sm danger" data-act="wipe">Tüm verileri sil</button><button class="btn sm" data-act="tour">Tanıtım turunu göster</button></div>
-    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.5</p></section>`;
+    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.6</p></section>`;
   $('#impFile', el).addEventListener('change', e => readFile(e.target.files[0], doImport));
   $('#restoreFile', el).addEventListener('change', e => readFile(e.target.files[0], restore));
 }
@@ -2112,7 +2132,7 @@ document.addEventListener('click', e => {
     const act = a.dataset.act;
     if (act === 'clearSample') ask('Örnek veriler silinsin mi?', 'Uydurma kayıtlar ve örnek hedefler silinir. Senin eklediklerin ve şablon ayarları kalır.', 'Örnekleri sil', () => { S.tx = S.tx.filter(x => !x.s); S.goals = S.goals.filter(g => !g.s); S.sample = false; save(); render(); toast('Örnekler silindi. Artık kendi kayıtlarını ekleyebilirsin.'); });
     else if (act === 'loadSample') { const smp = makeSample(); S.tx = S.tx.concat(smp.tx.map(x => ({...x, fixedId: undefined}))); S.goals = S.goals.concat(smp.goals); S.sample = true; save(); render(); toast('Örnek veriler yüklendi'); }
-    else if (act === 'wipe') ask('Tüm veriler silinsin mi?', 'Bütün kayıtlar, bütçeler, hedefler ve şablonlar silinir. Bu geri alınamaz; önce yedek almayı düşünebilirsin.', 'Hepsini sil', () => { S = blank(); save(); go('ozet'); toast('Tüm veriler silindi'); });
+    else if (act === 'wipe') ask('Tüm veriler silinsin mi?', 'Bütün kayıtlar, bütçeler, hedefler ve şablonlar silinir. Bu geri alınamaz; önce yedek almayı düşünebilirsin.' + (SY.code ? ' Eşitleme açık: bağlı diğer cihazlarda da silinir.' : ''), 'Hepsini sil', () => { S = blank(); save(); go('ozet'); toast('Tüm veriler silindi'); });
     else if (act === 'goSettings') go('ayarlar');
     else if (act === 'newQuick') editQuick(null);
     else if (act === 'newFixed') editFixed(null);
@@ -2142,6 +2162,11 @@ document.addEventListener('click', e => {
     else if (act === 'newAsset') editAsset(null);
     else if (act === 'newCard') editCard(null);
     else if (act === 'newNote') editNote(null);
+    else if (act === 'syncOn') syncStart(newCode(), false);
+    else if (act === 'syncHave') formModal('Bu cihazı bağla', [{k: 'code', label: 'Eşitleme kodu', ph: 'xxxxx-xxxxx-xxxxx-xxxxx', max: 40}], {}, v => { if (!v.code) return 'Kodu yaz.'; setTimeout(() => syncJoin(v.code), 50); });
+    else if (act === 'syncNow') { toast('Eşitleniyor…'); syncNow().then(() => toast(syncErr || 'Eşitlendi')); }
+    else if (act === 'syncLink') copyOut(syncLink(), 'Bağlantı');
+    else if (act === 'syncOff') syncOff();
     else if (act === 'tour') showTour();
     else if (act === 'ratesRefresh') { toast('Kurlar güncelleniyor…'); refreshRates(true).then(() => toast(ratesFailed ? 'Kurlar alınamadı. Elle girebilirsin.' : 'Kurlar güncellendi')); }
     else if (act === 'ratesManual') formModal('Kurları elle gir', [['USD', '1 dolar kaç TL?'], ['EUR', '1 euro kaç TL?'], ['GAU', '1 gram altın kaç TL?'], ['CEY', '1 çeyrek altın kaç TL?']].map(([k, l]) => ({k, label: l + ' (boş = otomatik)', t: 'num'})),
@@ -2216,7 +2241,7 @@ function toast(msg, action) {
   toastT = setTimeout(() => { el.hidden = true; }, action ? 5000 : 3000);
 }
 // Aynı veri başka bir sekmede değişirse onu al; yoksa bu sekme eski haliyle üstüne yazar ve kayıt kaybolur.
-window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const d = JSON.parse(e.newValue); if (!Array.isArray(d.tx)) return; S = Object.assign(blank(), d); S.goals = S.goals || []; render(); } catch (x) {} });
+window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const d = JSON.parse(e.newValue); if (!Array.isArray(d.tx)) return; S = Object.assign(blank(), d); S.goals = S.goals || []; knownIds = allIds(); SY = loadSync(); render(); } catch (x) {} });
 window.addEventListener('kese-updated', () => toast('Hesap Kitap güncellendi', {label: 'Yenile', fn: () => location.reload()}));
 
 let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (view === 'ozet') render(); }, 150); });
@@ -2258,6 +2283,80 @@ async function toggleNotifs() {
   try { localStorage.setItem('kese.notify', '1'); } catch (e) {}
   planNotifs(); render(); toast('Bildirimler açıldı');
 }
+/* ================= sync: cihazlar arası eşitleme (isteğe bağlı; veri kullanıcının kendi sunucusunda) ================= */
+const SYNC_API = (/^https?:$/.test(location.protocol) && !MOVED && !NATIVE ? '' : NEW_URL) + 'api/sync/';
+function loadSync() { try { return JSON.parse(localStorage.getItem(KEY + '.sync')) || {}; } catch (e) { return {}; } }
+let SY = loadSync(), syncBusy = false, syncT = 0, syncErr = '', syncPend = false;
+const saveSync = () => { try { if (SY.code) localStorage.setItem(KEY + '.sync', JSON.stringify(SY)); else localStorage.removeItem(KEY + '.sync'); } catch (e) {} };
+const newCode = () => { const A = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(20)); return [...b].map((x, i) => (i && i % 5 === 0 ? '-' : '') + A[x % A.length]).join(''); };
+const normCode = c => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/(.{5})(?=.)/g, '$1-');
+async function codeId(code) { const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hesapkitap:' + code)); return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+/* Karşılaştırma için sıradan bağımsız yazım: aynı içerik farklı sırayla gelirse "değişti" sanılmasın. */
+const canon = o => JSON.stringify(o, (k, v) => Array.isArray(v) ? (v.length && v[0] && v[0].id ? [...v].sort((a, b) => String(a.id).localeCompare(String(b.id))) : v) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
+/* İki cihazın verisini kayıt kayıt birleştir: iki tarafta eklenen kalır, silinen silinmiş kalır, aynı kayıtta yenisi geçerli olur. */
+function mergeState(L, R) {
+  const newer = (R.mt || 0) > (L.mt || 0) ? R : L, older = newer === R ? L : R, out = Object.assign({}, older, newer);
+  const maxMap = k => { const m = Object.assign({}, L[k] || {}); Object.entries(R[k] || {}).forEach(([id, t]) => { m[id] = Math.max(m[id] || 0, t); }); return m; };
+  const del = maxMap('del'), rev = maxMap('rev');
+  COLS.forEach(c => { const m = new Map();
+    (older[c] || []).forEach(x => m.set(x.id, x));
+    (newer[c] || []).forEach(x => { const o = m.get(x.id); m.set(x.id, o && (o.ts || 0) > (x.ts || 0) ? o : x); });
+    out[c] = [...m.values()].filter(x => !(del[x.id] && del[x.id] > Math.max(rev[x.id] || 0, x.ts || 0))); });
+  const seen = new Set(); out.quick = (out.quick || []).filter(q => { const k = [q.name, q.cat, q.amount, q.type].join('|'); return seen.has(k) ? false : seen.add(k); });
+  out.del = del; out.rev = rev; out.mt = Math.max(L.mt || 0, R.mt || 0); out.sample = !!(L.sample && R.sample);
+  if (!out.sample) out.tx = out.tx.filter(t => !t.s);
+  return out;
+}
+function adoptState(d) { S = Object.assign(blank(), d); S.goals = S.goals || []; S.notes = S.notes || []; knownIds = allIds(); localSave();
+  // Kullanıcı bir kutuya yazıyorsa ekranı altından çekme; yazması bitince yenile.
+  const a = document.activeElement; if (a && a.matches && a.matches('#view input, #view textarea')) syncPend = true; else render(); }
+document.addEventListener('focusout', () => { if (syncPend) { syncPend = false; setTimeout(render, 50); } });
+async function syncNow() {
+  if (!SY.code || !SY.id) return; if (syncBusy) { syncT = setTimeout(syncNow, 1500); return; }
+  syncBusy = true;
+  try {
+    for (let i = 0; i < 4; i++) {
+      const r = await fetch(SYNC_API + SY.id, {cache: 'no-store'});
+      let remote = null, rv = 0;
+      if (r.status === 200) { const j = await r.json(); remote = j.data; rv = j.v; } else if (r.status !== 404) throw new Error('get ' + r.status);
+      if (remote && rv !== SY.v) {
+        // Bu cihaz boşsa ya da örnek verideyse sunucudakini olduğu gibi al; değilse birleştir.
+        const merged = SY.adopt || S.sample ? Object.assign({}, remote) : mergeState(S, remote);
+        if (canon(merged) !== canon(S)) adoptState(merged);
+      }
+      if (remote) SY.dirty = canon(S) !== canon(remote);
+      delete SY.adopt; SY.v = rv;
+      if (!remote || SY.dirty) {
+        const p = await fetch(SYNC_API + SY.id, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({base: SY.v, data: S})});
+        if (p.status === 409) continue; // araya başka cihaz girdi: baştan al, birleştir, yeniden gönder
+        if (!p.ok) throw new Error('put ' + p.status);
+        SY.v = (await p.json()).v; SY.dirty = false;
+      }
+      break;
+    }
+    SY.last = Date.now(); syncErr = '';
+  } catch (e) { syncErr = navigator.onLine === false ? 'İnternet yok; bağlanınca eşitlenecek.' : 'Sunucuya ulaşılamadı; birazdan yeniden denenecek.'; }
+  saveSync(); syncBusy = false;
+  if (view === 'ayarlar' && modal.hidden && sheet.hidden) { const a = document.activeElement; if (!(a && a.matches && a.matches('#view input, #view textarea'))) render(); }
+}
+function syncTouch() { if (!SY.code) return; SY.dirty = true; saveSync(); clearTimeout(syncT); syncT = setTimeout(syncNow, 1200); }
+async function syncStart(code, adopt) {
+  if (!(window.crypto && crypto.subtle)) { toast('Bu tarayıcıda eşitleme açılamıyor.'); return; }
+  code = normCode(code); if (code.replace(/-/g, '').length < 12) { toast('Kod eksik görünüyor.'); return; }
+  SY = {code, id: await codeId(code), v: 0, dirty: !adopt, adopt: !!adopt}; saveSync();
+  toast('Eşitleniyor…'); await syncNow(); render();
+  toast(syncErr || 'Eşitleme açık. Kayıtların bağlı cihazlarda aynı görünecek.');
+}
+function syncOff() { ask('Bu cihazda eşitleme kapatılsın mı?', 'Kayıtların bu cihazda ve sunucuda kalır; yalnızca bu cihaz artık güncellenmez. Aynı kodla yeniden bağlayabilirsin.', 'Kapat', () => { SY = {}; saveSync(); render(); toast('Eşitleme bu cihazda kapatıldı'); }); }
+const syncLink = () => `${NEW_URL}#bagla=${SY.code}`;
+const hasData = () => !S.sample && (S.tx.length || S.fixed.length || (S.notes || []).length);
+function syncJoin(code) {
+  const go = () => syncStart(code, !hasData());
+  if (hasData()) ask('Bu cihazdaki kayıtlar birleştirilsin mi?', 'Bu cihazda da kayıt var. Bağlanınca buradakiler ile sunucudakiler birleştirilir; hiçbiri silinmez.', 'Bağlan ve birleştir', go); else go();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && SY.code) syncNow(); });
+window.addEventListener('online', () => { if (SY.code) syncNow(); });
+setInterval(() => { if (SY.code && !document.hidden) syncNow(); }, 20000);
 /* ================= backup + lock ================= */
 function markBackup() { S.lastBackup = Date.now(); S.backupSnooze = 0; save(); }
 async function hashPin(p) {
@@ -2280,7 +2379,7 @@ async function pinKey(k) {
 $('#lockPad').addEventListener('click', e => { const b = e.target.closest('button'); if (b) pinKey(b.textContent.trim()); });
 document.addEventListener('keydown', e => { if (!lock.hidden) { e.preventDefault(); e.stopPropagation(); pinKey(e.key); } }, true);
 $('#lockForgot').addEventListener('click', () => ask('PIN\'i mi unuttun?', 'PIN hiçbir yere kaydedilmediği için kurtarılamaz. Kilidi kaldırmanın tek yolu bu cihazdaki tüm Hesap Kitap verilerini silmek. Yedeğin varsa sonra geri yükleyebilirsin.', 'Verileri sil ve kilidi kaldır', () => {
-  try { localStorage.removeItem(KEY + '.pin'); } catch (e) {} S = blank(); S.since = Date.now(); S.autoDone = {}; save(); lock.hidden = true; go('ozet'); toast('Veriler silindi, kilit kaldırıldı'); }));
+  try { localStorage.removeItem(KEY + '.pin'); } catch (e) {} SY = {}; saveSync(); /* yalnızca bu cihaz silinsin, sunucudaki kayıtlar kalsın */ S = blank(); knownIds = allIds(); S.since = Date.now(); S.autoDone = {}; save(); lock.hidden = true; go('ozet'); toast('Veriler silindi, kilit kaldırıldı'); }));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
   if (dstr(new Date()) !== dstr(now0) && sheet.hidden && modal.hidden && lock.hidden) { location.reload(); return; }
@@ -2383,6 +2482,11 @@ autoFixed();
 render(true);
 boot();
 planNotifs();
+{ const m = location.hash.match(/^#bagla=([a-z0-9-]+)$/i);
+  if (m) { history.replaceState(null, '', location.pathname + '#ozet'); const code = normCode(m[1]);
+    if (SY.code === code) syncNow();
+    else setTimeout(() => ask('Bu cihaz eşitlemeye bağlansın mı?', 'Kayıtların bağlı cihazlarla aynı olacak. Bu bağlantıyı yalnızca kendi cihazlarında aç.', 'Bağla', () => setTimeout(() => syncJoin(code), 50)), 600); }
+  else if (SY.code) syncNow(); }
 if (S.goals.some(g => g.unit && g.unit !== 'TRY') || S.assets.length) refreshRates();
 })();
 </script>

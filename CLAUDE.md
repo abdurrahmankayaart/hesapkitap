@@ -3,7 +3,7 @@
 Bu dosya Claude Code'un projeyi tanıması içindir. Her oturumda otomatik okunur. Yeni bir şey öğrenince ya da bir iş bitince **bu dosyayı güncelle** ("Yapılacaklar" ve "Kararlar" bölümleri).
 
 ## Ürün
-- **Hesap Kitap**: Türkçe, telefon öncelikli, ücretsiz aylık gelir-gider takip uygulaması. Üyelik yok, sunucu yok; veriler cihazda (localStorage + IndexedDB).
+- **Hesap Kitap**: Türkçe, telefon öncelikli, ücretsiz aylık gelir-gider takip uygulaması. Üyelik yok; veriler cihazda (localStorage + IndexedDB). İsteğe bağlı **cihazlar arası eşitleme** açılırsa veriler ayrıca kendi sunucumuzda durur (aşağıda "Eşitleme").
 - Sahibi: Abdurrahman Kaya (abdurrahmankayaart@gmail.com). Kendisi, eşi Rumeysa ve arkadaşları kullanacak. Kullanıcıyla **Türkçe** konuş, teknik terimleri sade anlat.
 - **Yayın adresi: https://abdurrahmankaya.com/takip/** — kullanıcının kendi VPS'i (Coolify). Kuruldu (2026-10-06), aşağıdaki "VPS'e yayın" bölümüne bak.
 - Eski yayın (hâlâ açık): GitHub Pages → https://abdurrahmankayaart.github.io/hesapkitap/ (depo: `abdurrahmankayaart/hesapkitap`, eski adı `Gelir---Gider-Tablosu`). Buraya "yeni adrese taşındık" bandı konacak (yapılmadı).
@@ -55,7 +55,8 @@ helpers · categories · starter templates (`PROFILES`, sadece örnek veri için
 npm install
 npx playwright install chromium     # ilk seferde
 npm run serve                       # http://localhost:8000
-npm test                            # 11 uçtan uca test
+npm test                            # 13 uçtan uca test
+PORT=8000 DATA_DIR=/tmp/hk WEB_ROOT=. node server.js   # eşitlemeyi yerelde denemek için (npm run serve eşitlemeyi sunmaz)
 ```
 - Testler örnek veriyi bugünün tarihine göre üretir; testte sabit tarih seçici kullanma.
 - Service worker `file://` altında çalışmaz; SW denemesi gerekirse `npm run serve` ile.
@@ -69,9 +70,10 @@ npm test                            # 11 uçtan uca test
 
 ## VPS'e yayın: abdurrahmankaya.com/takip (KURULDU 2026-10-06)
 - **Coolify**: panel `http://187.127.77.126:8000`, proje "Kisisel web sitem" / production, uygulama adı `hesapkitap`, UUID `lgclgpmzb2kcdk4w1wdm58bg`. Kaynak: public GitHub deposu, dal `claude/monthly-expense-tracker-3cktrg`, build pack **Dockerfile**.
-- **Dosyalar**: `Dockerfile` (nginx:alpine, yalnızca web dosyalarını kopyalar — yeni bir web dosyası eklenirse `COPY` satırına da ekle), `deploy/nginx.conf`, `scripts/deploy.mjs`.
+- **Dosyalar**: `Dockerfile` (node:22-alpine), `server.js` (bağımlılıksız: web dosyalarını sunar + `/api/sync`), `scripts/deploy.mjs`. Yeni bir web dosyası eklenirse hem `Dockerfile` `COPY` satırına hem `server.js` içindeki `FILES` listesine ekle.
 - **Yönlendirme**: Coolify domain `https://abdurrahmankaya.com/takip` (+ `www`). Traefik `/takip` önekini siler; Nginx ikisini de kaldırır. `www.` → `abdurrahmankaya.com/takip/` 301 (veri origin'e bağlı, ikiye bölünmesin). Ana site (PHP, ayrı Coolify uygulaması) etkilenmez; ama `/takip` ile başlayan her yol (ör. `/takipci`) bu uygulamaya gelir, ana sitede öyle bir sayfa açma.
-- **Önbellek**: html/js/manifest `no-cache`, png/svg 7 gün.
+- **Önbellek**: html/js/manifest `no-cache`, png/svg 7 gün. `sw.js` `/api/` isteklerine hiç dokunmaz.
+- **Kalıcı disk**: Coolify'da `/data` (Storages → `hesapkitap-data`). Eşitleme verisi burada; bu disk silinirse herkesin eşitlenen verisi gider. Dockerfile ya da Coolify ayarı değişirken `/data` bağlantısını koru.
 - **Token**: `~/.coolify-token` (chmod 600) ya da `COOLIFY_TOKEN`. Depoya/sohbete yazma. Yeni bilgisayarda: Coolify → Keys & Tokens → API tokens → `root` yetkili token → `pbpaste > ~/.coolify-token && chmod 600 ~/.coolify-token`.
 - **Webhook**: GitHub deposunda push webhook'u → `…:8000/webhooks/source/github/events/manual` (gizli anahtar Coolify uygulamasında).
 - VPS: Hostinger `srv1638664.hstgr.cloud`, IP `187.127.77.126`. DNS Hostinger'da, `A @` ve `A www` bu IP'ye gidiyor.
@@ -79,6 +81,18 @@ npm test                            # 11 uçtan uca test
 **Eski adres (github.io)**
 - `MOVED` sabiti: `github.io`'da açılınca Özet'in üstünde "yeni adresine taşındı" bandı çıkar (yedeği indir → yeni adrese git). Veri kendiliğinden taşınmaz. Pages'i kapatma; kullanıcılar taşınınca kapatılabilir.
 - Karekod `store/karekod.png` yeni adresi gösterir (3.5'te yenilendi).
+
+## Eşitleme (2026-10-11)
+Kullanıcı "site her cihazda aynı veriyi göstersin" istedi; telefon ile bilgisayarın ayrı veri tutması onu şaşırttı.
+- **Sunucu** (`server.js`): `GET/PUT /api/sync/<sha256(kod)>`. Dosya: `/data/<id>.json` = `{v, t, data}`; her yazmada `.prev` kopyası. `PUT {base, data}`: `base` sunucudaki `v` değilse **409** + güncel belge döner.
+- **İstemci** (`index.html`, "sync" bölümü): `SY` (`<anahtar>.sync` = `{code, id, v, dirty, last}`), `syncNow` (al → `mergeState` → gerekirse gönder; 409'da baştan), `syncTouch` (her `save()` sonrası 1,2 sn), 20 sn'de bir ve sekme öne gelince yoklama.
+- **Birleştirme** kayıt bazında: `COLS` dizilerinde id ile birleşim; aynı id'de `ts`'si büyük olan; skaler alanlarda `S.mt`'si yeni olan taraf. **Silmeler** `S.del {id: zaman}` ile taşınır (`trackDeletes`, `save()` içinde önceki id kümesiyle fark alır); geri alma `S.rev`. `S`'yi topluca değiştiren her yerde `knownIds = allIds()` yapılmalı, yoksa her şey "silindi" sayılır.
+- `save()` = kullanıcı değişikliği (silme izi + `mt` + eşitleme). `localSave()` = yalnızca yaz (eşitlemeden gelen veri için). Karıştırma.
+- `canon()` karşılaştırması sıradan bağımsız; yoksa iki cihaz birbirini sonsuza kadar tetikler (testte "durulunca sunucu sürümü sabit").
+- Bağlama: Ayarlar → kod, ya da `…/takip/#bagla=<kod>` bağlantısı. Boş/örnek verili cihaz sunucudakini olduğu gibi alır; dolu cihaz birleştirir.
+- PIN unutma sıfırlaması eşitlemeyi önce kapatır (sunucudaki veri silinmesin). "Tüm verileri sil" eşitleme açıkken her yerden siler.
+- Fiş fotoğrafları (IndexedDB) eşitlenmez. Veri sunucuda şifresiz durur; koruma kodun tahmin edilemezliği.
+- Test: `tests/e2e/tsync.js` kendi `server.js`'ini geçici klasörle başlatır (iki-üç cihaz, çevrimdışı çakışma, sunucu yeniden başlatma).
 
 ## Kararlar (geçmiş)
 - Ad "Kese" → "Hesap Kitap" oldu; iç anahtarlarda "kese" kaldı (veri uyumu için).

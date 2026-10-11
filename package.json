@@ -1,6 +1,6 @@
 {
   "name": "hesap-kitap",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
   "description": "Hesap Kitap: aylık gelir ve gider takibi",
   "scripts": {
