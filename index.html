@@ -1241,6 +1241,16 @@ function fixedPageHtml() {
   }
 
   {
+    // Borçlarım: kart, esnek hesap, kredi. Ödeme burada işlenir, gider sayılmaz (harcama alışverişte zaten yazıldı). Kapandıkça çizgi dolar.
+    const all = S.debts.filter(d => d.dir === 'aldim'), open = all.filter(d => debtLeft(d) > 0), left = sum(open.map(d => ({amount: debtLeft(d)}))), total = sum(all), paid = total - sum(all.map(d => ({amount: debtLeft(d)})));
+    h += `<section class="card" data-debts><div class="sec-h"><div><h2>Borçlarım</h2><div class="sub num">${all.length ? (left ? `kalan ${money(left)}${paid > 0 ? ` · ${money(paid)} ödendi` : ''}` : 'hepsi kapandı') : 'ödeme gider sayılmaz'}</div></div><button class="btn sm" data-act="newOwe">+ Borç ekle</button></div>
+      ${all.length ? `${total > 0 && paid > 0 ? `<div class="bar" style="height:8px;margin:2px 0 6px"><i style="width:${Math.min(100, paid / total * 100)}%;background:var(--paid)"></i></div>` : ''}
+        <div>${all.sort((a, b) => debtLeft(b) - debtLeft(a)).map(d => { const l = debtLeft(d), done = l <= 0;
+          return `<div class="li ${done ? 'done' : ''}" style="--c:#64748B"><button class="li-main" data-dedit="${d.id}" aria-label="${esc(d.name)} düzenle"><span class="bub">${svgI('kredi')}</span><span style="min-width:0"><span class="t" style="display:block">${esc(d.name)}</span><span class="m num" style="display:block">${done ? `<b style="color:var(--paid)">kapandı</b> · ${money(d.amount)}` : `kalan <b style="color:var(--ink)">${money(l)}</b>${l < d.amount ? ` · ${money(d.amount)} üzerinden` : ''}`}${d.note ? ' · ' + esc(d.note) : ''}</span>${!done && l < d.amount ? `<span class="bar" style="display:block;height:5px;margin-top:6px"><i style="width:${(1 - l / d.amount) * 100}%;background:var(--paid)"></i></span>` : ''}</span></button>
+            ${done ? `<span class="btn sm paid" style="pointer-events:none">✓ Kapandı</span>` : `<button class="btn sm" data-dpay="${d.id}">Ödeme yap</button>`}</div>`; }).join('')}</div>`
+        : `<p class="hint">Kredi kartı, esnek hesap ya da kredi borcunu yaz; her ödemede kalanın düştüğünü gör.</p>`}</section>`;
+  }
+  {
     // Notlar: araç alım-satımı gibi büyük işler burada durur; gelir-gider toplamlarına katılmaz.
     const notes = (S.notes || []).filter(n => n.date.slice(0, 7) === mkey(cur.y, cur.m)).sort((a, b) => a.date.localeCompare(b.date));
     h += `<section class="card" data-notes><div class="sec-h"><div><h2>Notlar</h2><div class="sub">hesaba katılmaz, yalnızca kayıt</div></div><button class="btn sm" data-act="newNote">+ Not ekle</button></div>
@@ -1420,11 +1430,11 @@ function debtsHtml() {
   h += `<p class="hint">Borç ve alacaklar gelir-gider hesabına katılmaz, ayrı takip edilir.</p>`;
   return h;
 }
-function editDebt(d) {
-  formModal(d ? 'Borç / alacak' : 'Yeni borç ya da alacak',
+function editDebt(d, owe) {
+  formModal(d ? 'Borç / alacak' : owe ? 'Yeni borç' : 'Yeni borç ya da alacak',
     [{k: 'dir', label: 'Ne oldu?', t: 'sel', opts: [['verdim', 'Ben borç verdim (alacağım var)'], ['aldim', 'Ben borç aldım (borcum var)']]}, {k: 'name', label: 'Kim?', ph: 'örn. Ahmet', max: 30},
      {k: 'amount', label: 'Tutar (₺)', t: 'num', ph: 'örn. 2000'}, {k: 'date', label: 'Tarih', t: 'date'}, {k: 'due', label: 'Vade (isteğe bağlı)', t: 'date'}, {k: 'note', label: 'Not (isteğe bağlı)', ph: 'örn. Tatil için'}],
-    d ? {...d} : {dir: 'verdim', date: todayStr()},
+    d ? {...d} : {dir: owe ? 'aldim' : 'verdim', date: todayStr()},
     v => { if (!v.name) return 'Kimle olduğunu yaz.'; if (!(v.amount > 0)) return 'Tutarı gir.';
       const o = {dir: v.dir, name: cap(v.name), amount: v.amount, date: v.date || todayStr(), due: v.due || '', note: v.note};
       if (d) Object.assign(d, o); else S.debts.push({id: uid(), payments: [], ...o}); save(); render(); },
@@ -2163,6 +2173,7 @@ document.addEventListener('click', e => {
     else if (act === 'newAsset') editAsset(null);
     else if (act === 'newCard') editCard(null);
     else if (act === 'newNote') editNote(null);
+    else if (act === 'newOwe') editDebt(null, true);
     else if (act === 'syncOn') syncStart(newCode(), false);
     else if (act === 'syncHave') formModal('Bu cihazı bağla', [{k: 'code', label: 'Eşitleme kodu', ph: 'xxxxx-xxxxx-xxxxx-xxxxx', max: 40}], {}, v => { if (!v.code) return 'Kodu yaz.'; setTimeout(() => syncJoin(v.code), 50); });
     else if (act === 'syncNow') { toast('Eşitleniyor…'); syncNow().then(() => toast(syncErr || 'Eşitlendi')); }

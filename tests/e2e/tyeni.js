@@ -106,6 +106,18 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   check('Giderler filtresinde sabit ödeme yok', !(await pg.textContent('#view')).includes('Ev elektrik'));
   await pg.click('[data-ft="all"]'); await pg.waitForTimeout(200);
 
+  // 1k) Borçlarım kartı: borç eklenir, ödeme kalanı düşürür, gider toplamı değişmez
+  await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
+  const tot0 = await pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.length + ':' + t.reduce((a, x) => a + x.amount, 0); });
+  await pg.click('[data-act="newOwe"]'); await pg.waitForTimeout(300); await pg.fill('#f_name', 'Kredi kartı'); await pg.fill('#f_amount', '194000'); await pg.click('#modal .save'); await pg.waitForTimeout(400);
+  await pg.click('[data-debts] [data-dpay]'); await pg.waitForTimeout(300); await pg.fill('#f_amount', '100000'); await pg.click('#modal .save'); await pg.waitForTimeout(400);
+  const dc = await pg.textContent('[data-debts]');
+  check('borç kartı kalanı ve ödeneni gösteriyor', dc.includes('kalan ₺94.000') && dc.includes('₺100.000 ödendi') && dc.includes('₺194.000 üzerinden'));
+  check('borç ödemesi gider sayılmadı', await pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.length + ':' + t.reduce((a, x) => a + x.amount, 0); }) === tot0);
+  await pg.locator('[data-debts]').screenshot({path: 'yeni-borclarim.png'});
+  await pg.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+  await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
+
   // 1i) notlar: tutarlı not eklenir, gelir-gider toplamı değişmez
   await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
   const totals = () => pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.length + ':' + t.reduce((a, x) => a + x.amount, 0); });
