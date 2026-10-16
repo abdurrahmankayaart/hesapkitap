@@ -64,7 +64,8 @@ const prevM = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   await pg.click('#fab'); await pg.waitForTimeout(200);
   const png = await pg.evaluate(() => { const c = document.createElement('canvas'); c.width = 400; c.height = 600; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 400, 600); x.fillStyle = '#000'; x.font = '24px monospace'; x.fillText('GENEL TOPLAM 245,90', 20, 300); return c.toDataURL('image/png').split(',')[1]; });
   await pg.setInputFiles('#rcFile', {name: 'fis.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64')});
-  await pg.waitForTimeout(800);
+  // Fiş okuyucu ilk seferde internetten iniyor; sabit süre yerine okuma bitene kadar bekle.
+  await pg.waitForFunction(() => { const m = document.getElementById('rcMsg').textContent; return m && !/okunuyor/.test(m); }, null, {timeout: 90000}).catch(() => {});
   console.log('receipt msg:', await pg.textContent('#rcMsg'), '| amount:', await pg.textContent('#amtDisp'), '| note:', await pg.inputValue('#txNote'), '| date:', await pg.inputValue('#txDate'));
   await pg.screenshot({path: 'n-receipt.png'});
   await pg.click('#txSave'); await pg.waitForTimeout(400);
