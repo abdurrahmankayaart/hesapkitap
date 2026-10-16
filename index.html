@@ -1625,7 +1625,7 @@ function renderSettings(el) {
     ${SY.code ? `<p class="hint" style="margin-bottom:10px">Kayıtların bağlı bütün cihazlarda aynı görünür. ${syncErr ? esc(syncErr) : SY.last ? `Son eşitleme: ${(m => m < 1 ? 'az önce' : m < 60 ? m + ' dakika önce' : Math.floor(m / 60) + ' saat önce')(Math.floor((Date.now() - SY.last) / 60000))}.` : ''}</p>
       <p class="hint" style="margin-bottom:6px"><b>Eşitleme kodun</b> (başka cihazı bağlamak için; şifre gibi sakla):</p>
       <div class="inp num" id="syncCode" style="font-weight:700;letter-spacing:.04em;user-select:all;-webkit-user-select:all">${esc(SY.code)}</div>
-      <div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="syncQr">Telefonu bağla (karekod)</button><button class="btn sm" data-act="syncLink">Bağlantıyı kopyala</button><button class="btn sm" data-act="syncNow">Şimdi eşitle</button><button class="btn sm danger" data-act="syncOff">Bu cihazda kapat</button></div>
+      <div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="syncQr">Telefonu bağla (karekod)</button><button class="btn sm" data-act="syncLink">Bağlantıyı kopyala</button><button class="btn sm" data-act="syncNow">Şimdi eşitle</button><button class="btn sm" data-act="syncOff">Bu cihazda kapat</button><button class="btn sm danger" data-act="syncWipe">Sunucudan sil</button></div>
       <p class="hint" style="margin-top:10px">Her cihaz bir kez bağlanır: karekodu telefonla okut ya da bağlantıyı kendine gönderip telefonda aç. Fiş fotoğrafları eşitlenmez.</p>`
     : `<p class="hint" style="margin-bottom:10px">Telefonda girdiğin kaydı bilgisayarda da gör. Açarsan kayıtların, yalnızca senin bildiğin bir kodla, bu sitenin sunucusunda saklanır.</p>
       <div class="row"><button class="btn sm primary" data-act="syncOn">Eşitlemeyi aç</button><button class="btn sm" data-act="syncHave">Kodum var, bu cihazı bağla</button></div>`}</section>
@@ -2180,6 +2180,7 @@ document.addEventListener('click', e => {
     else if (act === 'syncLink') copyOut(syncLink(), 'Bağlantı');
     else if (act === 'syncQr') syncQr();
     else if (act === 'syncOff') syncOff();
+    else if (act === 'syncWipe') syncWipe();
     else if (act === 'tour') showTour();
     else if (act === 'ratesRefresh') { toast('Kurlar güncelleniyor…'); refreshRates(true).then(() => toast(ratesFailed ? 'Kurlar alınamadı. Elle girebilirsin.' : 'Kurlar güncellendi')); }
     else if (act === 'ratesManual') formModal('Kurları elle gir', [['USD', '1 dolar kaç TL?'], ['EUR', '1 euro kaç TL?'], ['GAU', '1 gram altın kaç TL?'], ['CEY', '1 çeyrek altın kaç TL?']].map(([k, l]) => ({k, label: l + ' (boş = otomatik)', t: 'num'})),
@@ -2331,6 +2332,7 @@ async function syncNow() {
     for (let i = 0; i < 4; i++) {
       const r = await fetch(SYNC_API + SY.id, {cache: 'no-store'});
       let remote = null, rv = 0;
+      if (r.status === 410) { SY = {}; saveSync(); syncBusy = false; render(); toast('Eşitleme kapatıldı: sunucudaki kayıtlar başka bir cihazdan silinmiş. Bu cihazdaki kayıtların duruyor.'); return; }
       if (r.status === 200) { const j = await r.json(); remote = j.data; rv = j.v; } else if (r.status !== 404) throw new Error('get ' + r.status);
       if (remote && rv !== SY.v) {
         // Bu cihaz boşsa ya da örnek verideyse sunucudakini olduğu gibi al; değilse birleştir.
@@ -2360,6 +2362,8 @@ async function syncStart(code, adopt) {
   toast('Eşitleniyor…'); await syncNow(); render();
   toast(syncErr || 'Eşitleme açık. Kayıtların bağlı cihazlarda aynı görünecek.');
 }
+function syncWipe() { ask('Sunucudaki kayıtların silinsin mi?', 'Bu koda bağlı kayıtlar sunucudan kalıcı olarak silinir ve bütün cihazlarda eşitleme kapanır. Bu cihazdaki ve diğer cihazlardaki kayıtlar yerinde kalır.', 'Sunucudan sil', async () => {
+  try { const r = await fetch(SYNC_API + SY.id, {method: 'DELETE'}); if (!r.ok && r.status !== 410) throw 0; SY = {}; saveSync(); render(); toast('Sunucudaki kayıtların silindi'); } catch (e) { toast('Silinemedi; internet bağlantını kontrol edip tekrar dene.'); } }); }
 function syncOff() { ask('Bu cihazda eşitleme kapatılsın mı?', 'Kayıtların bu cihazda ve sunucuda kalır; yalnızca bu cihaz artık güncellenmez. Aynı kodla yeniden bağlayabilirsin.', 'Kapat', () => { SY = {}; saveSync(); render(); toast('Eşitleme bu cihazda kapatıldı'); }); }
 const syncLink = () => `${NEW_URL}#bagla=${SY.code}`;
 /* Telefonu bağlamanın en kolay yolu: bilgisayarda karekodu göster, telefonun kamerasıyla okut. Karekod cihazda üretilir. */

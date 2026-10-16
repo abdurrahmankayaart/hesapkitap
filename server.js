@@ -16,14 +16,21 @@ const fileOf = id => path.join(DATA, id + '.json');
 const readDoc = id => { try { return JSON.parse(fs.readFileSync(fileOf(id), 'utf8')); } catch (e) { return null; } };
 function writeDoc(id, doc) {
   const f = fileOf(id), tmp = f + '.tmp';
-  if (fs.existsSync(f)) fs.copyFileSync(f, f + '.prev'); // son sürümün bir kopyası, yanlış yazmaya karşı
+  if (fs.existsSync(f) && !doc.deleted) fs.copyFileSync(f, f + '.prev'); // son sürümün bir kopyası, yanlış yazmaya karşı
   fs.writeFileSync(tmp, JSON.stringify(doc));
   fs.renameSync(tmp, f);
 }
 
 function sync(req, res, id) {
-  if (req.method === 'OPTIONS') { res.writeHead(204, {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400'}); return res.end(); }
-  if (req.method === 'GET') { const d = readDoc(id); return d ? json(res, 200, d) : json(res, 404, {v: 0}); }
+  if (req.method === 'OPTIONS') { res.writeHead(204, {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400'}); return res.end(); }
+  const d0 = readDoc(id);
+  // Silinmiş kod: veri yok, yalnızca "silindi" işareti; diğer cihazlar bunu görüp eşitlemeyi kapatır, eski veriyi geri yüklemez.
+  if (d0 && d0.deleted) return json(res, 410, {deleted: true});
+  if (req.method === 'GET') return d0 ? json(res, 200, d0) : json(res, 404, {v: 0});
+  if (req.method === 'DELETE') {
+    try { writeDoc(id, {v: (d0 ? d0.v : 0) + 1, t: Date.now(), deleted: true}); fs.rmSync(fileOf(id) + '.prev', {force: true}); } catch (e) { return json(res, 500, {error: 'write'}); }
+    return json(res, 200, {deleted: true});
+  }
   if (req.method !== 'PUT') return json(res, 405, {error: 'method'});
   const chunks = []; let size = 0, over = false;
   req.on('data', c => { size += c.length; if (size > MAX_BODY) over = true; else chunks.push(c); });

@@ -72,6 +72,15 @@ const startServer = () => new Promise(res => { const p = spawn(process.execPath,
   await D.pg.fill('#f_code', 'aaaaa-bbbbb-ccccc-ddddd'); await D.pg.click('#modal .save'); await D.pg.waitForTimeout(1800);
   check('yanlış kod kimsenin verisini göstermiyor', await notes(D.pg) === '');
 
+  // Sunucudan sil: veri gider, diğer cihazlar eşitlemeyi kapatır ve eski veriyi geri yüklemez; yerel kayıtlar kalır
+  const aId = await A.pg.evaluate(() => JSON.parse(localStorage.getItem('kese.v1.sync')).id);
+  await A.pg.click('#gear'); await A.pg.waitForTimeout(400); await A.pg.click('[data-act="syncWipe"]'); await A.pg.waitForTimeout(300); await A.pg.click('#modal .save'); await A.pg.waitForTimeout(1200);
+  const docFile = path.join(DATA, aId + '.json');
+  check('sunucuda veri kalmadı', !JSON.parse(fs.readFileSync(docFile, 'utf8')).data && !fs.existsSync(docFile + '.prev'));
+  await sync(B.pg); await B.pg.waitForTimeout(800);
+  check('diğer cihaz eşitlemeyi kapattı, kayıtları duruyor', await B.pg.evaluate(() => !localStorage.getItem('kese.v1.sync')) && await notes(B.pg) === 'Ekmek,Market,Simit,Taksi');
+  check('silinen kod geri dolmadı', !JSON.parse(fs.readFileSync(docFile, 'utf8')).data);
+
   console.log('errs:', JSON.stringify(errs));
   await b.close(); srv.kill(); fs.rmSync(DATA, {recursive: true, force: true});
   process.exit(fail.length ? 1 : 0);

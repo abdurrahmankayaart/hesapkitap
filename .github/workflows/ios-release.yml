@@ -1,0 +1,58 @@
+name: iOS → TestFlight
+
+# Elle başlatılır (Actions → "iOS → TestFlight" → Run workflow).
+# Gerekli GitHub Secrets: APPLE_TEAM_ID, APPSTORE_KEY_ID, APPSTORE_ISSUER_ID, APPSTORE_KEY_P8 (.p8 dosyasının içeriği).
+# Henüz gerçek Apple hesabıyla denenmedi; ilk çalıştırmada imza ayarı gerekebilir.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  testflight:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - run: npx cap sync ios
+      - name: App Store Connect API anahtarı
+        env:
+          KEY_P8: ${{ secrets.APPSTORE_KEY_P8 }}
+        run: |
+          test -n "$KEY_P8" || { echo "APPSTORE_KEY_P8 secret eksik"; exit 1; }
+          printf '%s' "$KEY_P8" > "$RUNNER_TEMP/asc.p8"
+      - name: Arşivle (imzalı)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc.p8" \
+            -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            archive | tail -40
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: App Store Connect'e yükle
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc.p8" \
+            -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" | tail -40
+          test "${PIPESTATUS[0]}" -eq 0

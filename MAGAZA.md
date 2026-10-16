@@ -30,11 +30,11 @@ Uygulama, web sürümüyle aynı kodu kullanan gerçek bir iOS ve Android uygula
 2. App Store Connect'te **Yeni uygulama** → ad: Hesap Kitap, paket kimliği: `com.hesapkitap.app`, birincil dil: Türkçe.
 3. Yükleme için iki yol var:
    - **Mac ile:** `npm install && npm run ios` → Xcode açılır → Product → Archive → Distribute App.
-   - **Mac olmadan:** App Store Connect → Kullanıcılar ve Erişim → Entegrasyonlar'dan bir **API anahtarı** oluşturup bana haber ver. Anahtarları GitHub Secrets'a eklersin; ben de GitHub'ın Mac makinesinde imzalayıp TestFlight'a yükleyen adımı eklerim.
-4. Mağaza sayfası: metinler ve anahtar kelimeler `store/magaza-metinleri.md`, 6,9" iPhone ekran görüntüleri `store/ekran-goruntuleri/iphone/`. "Gizlilik" bölümünde **Veri toplanmıyor** seçeneği işaretlenir.
+   - **Mac olmadan (önerilen, Xcode gerekmez):** App Store Connect → Kullanıcılar ve Erişim → Entegrasyonlar → App Store Connect API → yeni anahtar (rol: App Manager). GitHub → depo → Settings → Secrets and variables → Actions'a dört secret ekle: `APPLE_TEAM_ID` (developer.apple.com → Membership), `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID`, `APPSTORE_KEY_P8` (.p8 dosyasının içeriği). Sonra Actions → **iOS → TestFlight** → Run workflow. Derleme TestFlight'a düşer (`.github/workflows/ios-release.yml`; gerçek hesapla henüz denenmedi).
+4. Mağaza sayfası: metinler ve anahtar kelimeler `store/magaza-metinleri.md`, 6,9" iPhone ekran görüntüleri `store/ekran-goruntuleri/iphone/`. Gizlilik bölümü eşitleme yüzünden artık "veri toplanmıyor" değil; ne işaretleneceği `store/magaza-metinleri.md` → "Uygulama gizliliği" bölümünde.
 5. Apple incelemesi genelde 1–3 gün sürer.
 
 ## Bilmen gerekenler
 - Uygulama içinde **sesle giriş çalışmaz** (iOS ve Android uygulama içi tarayıcıları bunu desteklemiyor), mikrofon düğmesi kendiliğinden gizlenir. Yazarak, kamerayla ve + ekranıyla giriş çalışır.
-- Web sürümü (GitHub Pages) ile mağaza uygulamasının verileri **ayrıdır**; web'den uygulamaya geçerken Ayarlar → Yedek ile aktar.
+- Web sürümü ile mağaza uygulamasının verileri **ayrı kopyalardır**; Ayarlar → Cihazlar arası eşitleme ile bağlanınca aynı kayıtları gösterir (ya da Yedek ile bir kez aktarılır).
 - Yedek dosyası uygulamada telefonun **paylaş menüsüyle** kaydedilir (Dosyalar, Drive, WhatsApp vb.).
