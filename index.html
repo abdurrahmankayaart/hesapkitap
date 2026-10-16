@@ -1649,7 +1649,7 @@ function renderSettings(el) {
   <section class="card"><div class="sec-h"><h2>Sıfırla</h2></div><div class="row">
     ${S.sample ? '<button class="btn sm" data-act="clearSample">Örnek verileri sil</button>' : '<button class="btn sm" data-act="loadSample">Örnek verileri yükle</button>'}
     <button class="btn sm danger" data-act="wipe">Tüm verileri sil</button><button class="btn sm" data-act="tour">Tanıtım turunu göster</button></div>
-    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.6</p></section>`;
+    <p class="hint" style="margin-top:10px">Toplam ${S.tx.length} kayıt · Hesap Kitap 3.6 · <a href="privacy.html" data-act="privacy" style="color:var(--accent);font-weight:700">Gizlilik politikası</a></p></section>`;
   $('#impFile', el).addEventListener('change', e => readFile(e.target.files[0], doImport));
   $('#restoreFile', el).addEventListener('change', e => readFile(e.target.files[0], restore));
 }
@@ -2180,6 +2180,7 @@ document.addEventListener('click', e => {
     else if (act === 'syncLink') copyOut(syncLink(), 'Bağlantı');
     else if (act === 'syncQr') syncQr();
     else if (act === 'syncOff') syncOff();
+    else if (act === 'privacy') { e.preventDefault(); openModal(`${grabHtml('Gizlilik politikası')}<iframe src="privacy.html" title="Gizlilik politikası" style="width:100%;height:62vh;border:0;border-radius:14px;background:#fff"></iframe><button type="button" class="btn" data-mclose>Kapat</button>`); }
     else if (act === 'syncWipe') syncWipe();
     else if (act === 'tour') showTour();
     else if (act === 'ratesRefresh') { toast('Kurlar güncelleniyor…'); refreshRates(true).then(() => toast(ratesFailed ? 'Kurlar alınamadı. Elle girebilirsin.' : 'Kurlar güncellendi')); }

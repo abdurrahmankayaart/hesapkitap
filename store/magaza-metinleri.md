@@ -82,6 +82,7 @@ Hesap gerekmez; uygulama açılınca ad sorar ve kullanılabilir. Örnek veriler
 | Dosya | Nereye |
 |---|---|
 | `ekran-goruntuleri/iphone/*.png` (1320×2868) | App Store → iPhone 6,9" ekran görüntüleri |
+| `ekran-goruntuleri/iphone-67/*.png` (1290×2796) | App Store → iPhone 6,7". 6,9" tarayıcıdan yüklenirken kabul edilmezse ya da API ile yüklenirse bunları kullan |
 | `ekran-goruntuleri/android/*.png` (1080×2160) | Google Play → Telefon ekran görüntüleri |
 | `play-one-cikan-gorsel.png` (1024×500) | Google Play → Öne çıkan görsel |
 | `../icon-512.png` | Google Play → Uygulama simgesi |

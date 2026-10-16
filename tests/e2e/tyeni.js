@@ -118,6 +118,11 @@ const OLD = 'https://abdurrahmankayaart.github.io/hesapkitap/';
   await pg.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
   await pg.click('.nav a[data-v="ozet"]'); await pg.waitForTimeout(300);
 
+  // 1l) Ayarlar'daki gizlilik bağlantısı uygulama içinde açılır
+  await pg.click('#gear'); await pg.waitForTimeout(300); await pg.click('[data-act="privacy"]'); await pg.waitForTimeout(800);
+  check('gizlilik politikası uygulama içinde açılıyor', await pg.evaluate(() => { const f = document.querySelector('#modal iframe'); return !!f && /privacy\.html$/.test(f.src) && !/privacy/.test(location.href); }));
+  await pg.keyboard.press('Escape'); await pg.waitForTimeout(300); await pg.click('#gear'); await pg.waitForTimeout(300);
+
   // 1i) notlar: tutarlı not eklenir, gelir-gider toplamı değişmez
   await pg.click('.nav a[data-v="hareketler"]'); await pg.waitForTimeout(300); await pg.click('[data-ltab="sabit"]'); await pg.waitForTimeout(300);
   const totals = () => pg.evaluate(() => { const t = JSON.parse(localStorage.getItem('kese.v1')).tx; return t.length + ':' + t.reduce((a, x) => a + x.amount, 0); });

@@ -38,3 +38,22 @@ Uygulama, web sürümüyle aynı kodu kullanan gerçek bir iOS ve Android uygula
 - Uygulama içinde **sesle giriş çalışmaz** (iOS ve Android uygulama içi tarayıcıları bunu desteklemiyor), mikrofon düğmesi kendiliğinden gizlenir. Yazarak, kamerayla ve + ekranıyla giriş çalışır.
 - Web sürümü ile mağaza uygulamasının verileri **ayrı kopyalardır**; Ayarlar → Cihazlar arası eşitleme ile bağlanınca aynı kayıtları gösterir (ya da Yedek ile bir kez aktarılır).
 - Yedek dosyası uygulamada telefonun **paylaş menüsüyle** kaydedilir (Dosyalar, Drive, WhatsApp vb.).
+
+## Gönderimden önce kontrol listesi (app-store-review-playbook'tan, bize uyanlar)
+Kaynak: github.com/dursunyartasi/app-store-review-playbook (8 uygulama, 15 red). Bizim duruma uyan maddeler:
+- [x] **Hesap silme (5.1.1(v))**: hesap yok; eşitleme verisi Ayarlar → Eşitleme → "Sunucudan sil" ile uygulama içinden, anında ve kalıcı silinir.
+- [x] **Gizlilik bağlantısı uygulama içinde tıklanabilir (2.1(a))**: Ayarlar'ın en altında, uygulamadan çıkmadan açılır. Adres 200 dönüyor.
+- [x] **Satın alma izi yok (3.1.1)**: fiyat, plan, "Pro" yok; tamamen ücretsiz.
+- [x] **Hesapsız gezilebilir**: açılışta ad sorar, "Önce örnek verilerle gezeyim" ile dolu ekran görülür; boş uygulama görmez.
+- [x] **Yarım özellik yok (2.1)**: mağaza uygulamasında çalışmayan sesle giriş gizli.
+- [x] **Gereksiz izin yok (5.1.1)**: galeri izni istenmiyor (sistem seçicisi izinsiz çalışır); kamera yalnızca fotoğraf çekerken, Türkçe açıklamayla.
+- [x] **Yalnızca iPhone, yalnızca dikey**: iPad hedefi kapalı (iPad ekran görüntüsü ve iPad'de inceleme derdi yok; iPad'de iPhone sürümü açılır).
+- [x] **Gizlilik beyanı gerçekle aynı**: `store/magaza-metinleri.md` → "Uygulama gizliliği". Sihirbazda her maddeyi kaydettikten sonra özet ekranından tek tek kontrol et.
+- [x] **İnceleme notu**: "küçük, niş, aile için, davetli" gibi ifadeler YOK (4.2 reddi). "Herkese açık, ücretsiz" çerçevesi; hesapsız yol adım adım. 4000 karakter sınırı.
+- [ ] **Gerçek iPhone'da TestFlight**: eşitleme, kamera, bildirim. Simülatörde çalışan mağaza derlemesinde çökebilir.
+- [ ] **Yükleme "başarılı" ≠ kabul**: App Store Connect'te derleme "Ready to Submit / Geçerli" olana kadar bekle.
+- [ ] **Sürüm**: ilk gönderim 1.0. Onaylanan sürüme yeni derleme yüklenemez (90062/90186); güncellemede `MARKETING_VERSION`'ı artır.
+- [ ] **Yaş sınırı 4+** (2025'ten beri bantlar 4+, 9+, 13+, 16+, 18+).
+- [ ] **Bireysel hesapta geliştirici adı** kayıt sırasında harf harf kontrol edilmeli; sonradan düzeltmek zor.
+- [ ] **Yayın elle**: onaydan sonra "Yayınla"ya basmak gerekir.
+- Google Play: reklam kimliği izni yok (beyan "kullanılmıyor" olmalı), yayın ülkeleri "tümü", gizlilik adresi 200.

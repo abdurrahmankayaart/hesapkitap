@@ -2,7 +2,8 @@ const { chromium } = require('playwright');
 const path = require('path'), fs2 = require('fs'), { pathToFileURL } = require('url');
 const ROOT = path.resolve(__dirname, '..');
 const OUTDIR = path.join(ROOT, 'store', 'ekran-goruntuleri', '_yeni'); fs2.mkdirSync(OUTDIR, {recursive: true});
-const sizes = [{n:'ios', w:440, h:956, s:3}, {n:'android', w:360, h:720, s:3}];
+// ios: 6,9" (1320×2868); ios67: 6,7" (1290×2796) — App Store Connect API'si 6,9" türünü kabul etmiyor, yedek olarak 6,7" da üretilir.
+const sizes = [{n:'ios', w:440, h:956, s:3}, {n:'ios67', w:430, h:932, s:3}, {n:'android', w:360, h:720, s:3}];
 const U = pathToFileURL(path.join(ROOT, 'index.html')).href;
 (async () => {
   const b = await chromium.launch();
