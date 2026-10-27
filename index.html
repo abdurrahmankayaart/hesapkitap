@@ -2257,7 +2257,8 @@ function toast(msg, action) {
 }
 // Aynı veri başka bir sekmede değişirse onu al; yoksa bu sekme eski haliyle üstüne yazar ve kayıt kaybolur.
 window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const d = JSON.parse(e.newValue); if (!Array.isArray(d.tx)) return; S = Object.assign(blank(), d); S.goals = S.goals || []; knownIds = allIds(); SY = loadSync(); render(); } catch (x) {} });
-window.addEventListener('kese-updated', () => toast('Hesap Kitap güncellendi', {label: 'Yenile', fn: () => location.reload()}));
+// Yeni sürüm gelince kendiliğinden yenile; yazı yazılıyorsa bölme, bildirimle sor.
+window.addEventListener('kese-updated', () => { const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) toast('Hesap Kitap güncellendi', {label: 'Yenile', fn: () => location.reload()}); else location.reload(); });
 
 let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (view === 'ozet') render(); }, 150); });
 /* ================= phone notifications (yalnızca mağaza uygulaması; cihazda zamanlanır, sunucu yok) ================= */
@@ -2524,7 +2525,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) window.dispatchEvent(new Event('kese-updated')); });
-    navigator.serviceWorker.register('sw.js').then(reg => { setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000); }).catch(() => {});
+    navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(reg => {
+      const check = () => reg.update().catch(() => {});
+      setInterval(check, 60 * 60 * 1000);
+      // Ana ekrandan açılan uygulama kapanmayıp arka plandan döner; her dönüşte yeni sürüme bak.
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+      window.addEventListener('pageshow', e => { if (e.persisted) check(); });
+    }).catch(() => {});
   });
 }
 </script>
